@@ -51,6 +51,10 @@ const messageAttributesEraseBehavior: Record<
   isErased: 'preserve',
   isTapToViewInvalid: 'preserve',
   isViewOnce: 'preserve',
+  // Custom: keep the preserved original contents across (re-)erasures so the
+  // deleted-for-everyone bubble can keep showing the original text.
+  originalBody: 'preserve',
+  originalBodyRanges: 'preserve',
   readAt: 'preserve',
   readStatus: 'preserve',
   received_at_ms: 'preserve',

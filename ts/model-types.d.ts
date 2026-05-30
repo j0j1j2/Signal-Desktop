@@ -245,6 +245,11 @@ export type MessageAttributesType = {
   id: string;
   type: MessageType;
   body?: string;
+  // Custom: when a message is deleted for everyone, the original contents are
+  // preserved here so the bubble can render "<original text> (deleted)" with a
+  // strikethrough instead of a "X deleted this message" tombstone.
+  originalBody?: string;
+  originalBodyRanges?: ReadonlyArray<RawBodyRange>;
   attachments?: ReadonlyArray<AttachmentType>;
   preview?: ReadonlyArray<LinkPreviewType>;
   sticker?: StickerType;

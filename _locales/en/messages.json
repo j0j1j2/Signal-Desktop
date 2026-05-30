@@ -3578,6 +3578,10 @@
     "messageformat": "You deleted this message",
     "description": "Shown in a message bubble when you deleted your own message for everyone."
   },
+  "icu:message--deletedForEveryone--deletedSuffix": {
+    "messageformat": "(deleted)",
+    "description": "Suffix shown after the original text of a message that was deleted for everyone."
+  },
   "icu:message--attachmentTooBig--one": {
     "messageformat": "Attachment too large to display.",
     "description": "Shown in a message bubble if no attachments are left on message when too-large attachments are dropped"

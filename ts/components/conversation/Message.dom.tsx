@@ -319,6 +319,10 @@ export type PropsData = {
   isBlocked: boolean;
   isMessageRequestAccepted: boolean;
   bodyRanges?: HydratedBodyRangesType;
+  // Custom: original contents preserved when deleted-for-everyone, rendered as
+  // "<original text> (deleted)" with a strikethrough.
+  originalText?: string;
+  originalBodyRanges?: HydratedBodyRangesType;
 
   renderMenu?: () => JSX.Element | undefined;
   renderMessageContextMenu?: (
@@ -2421,6 +2425,8 @@ export class Message extends PureComponent<Props, State> {
       isSpoilerExpanded,
       kickOffAttachmentDownload,
       messageExpanded,
+      originalText,
+      originalBodyRanges,
       payment,
       showConversation,
       showSpoiler,
@@ -2430,8 +2436,19 @@ export class Message extends PureComponent<Props, State> {
     } = this.props;
     const { metadataWidth } = this.state;
 
-    const messageStatusContents = this.#getMessageStatusContents();
-    if (messageStatusContents == null && text == null) {
+    // Custom: for a deleted-for-everyone message that still has its preserved
+    // original contents, render that text (struck through) with a "(deleted)"
+    // suffix instead of the "X deleted this message" tombstone.
+    const showOriginalOnDelete =
+      Boolean(deletedForEveryone) && originalText != null;
+    const messageStatusContents = showOriginalOnDelete
+      ? null
+      : this.#getMessageStatusContents();
+    if (
+      messageStatusContents == null &&
+      text == null &&
+      !showOriginalOnDelete
+    ) {
       return null;
     }
 
@@ -2472,7 +2489,32 @@ export class Message extends PureComponent<Props, State> {
         }}
       >
         {messageStatusContents != null && messageStatusContents}
-        {messageStatusContents == null && text != null && (
+        {showOriginalOnDelete && originalText != null && (
+          <>
+            <span className="module-message__text--deleted-original">
+              <MessageBodyReadMore
+                bodyRanges={originalBodyRanges}
+                direction={direction}
+                disableLinks={!this.#areLinksEnabled()}
+                displayLimit={displayLimit}
+                i18n={i18n}
+                id={id}
+                isSpoilerExpanded={isSpoilerExpanded || {}}
+                kickOffBodyDownload={() => undefined}
+                messageExpanded={messageExpanded}
+                showConversation={showConversation}
+                renderLocation={RenderLocation.Timeline}
+                onExpandSpoiler={data => showSpoiler(id, data)}
+                text={originalText}
+              />
+            </span>
+            <span className="module-message__deleted-suffix">
+              {' '}
+              {i18n('icu:message--deletedForEveryone--deletedSuffix')}
+            </span>
+          </>
+        )}
+        {messageStatusContents == null && !showOriginalOnDelete && text != null && (
           <MessageBodyReadMore
             bodyRanges={bodyRanges}
             direction={direction}

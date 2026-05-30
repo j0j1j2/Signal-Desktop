@@ -119,6 +119,18 @@ export async function applyDeleteForEveryone(
       deletedForEveryone: true,
       reactions: [],
     };
+
+    // Custom: preserve the original text (and its formatting) before erasure so
+    // the UI can render "<original text> (deleted)" instead of a tombstone.
+    const originalBody = message.get('body');
+    if (originalBody) {
+      additionalProps.originalBody = originalBody;
+      const originalBodyRanges = message.get('bodyRanges');
+      if (originalBodyRanges) {
+        additionalProps.originalBodyRanges = originalBodyRanges;
+      }
+    }
+
     if (del.isAdminDelete) {
       additionalProps.deletedForEveryoneByAdminAci = del.deleteSentByAci;
     }

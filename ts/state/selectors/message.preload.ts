@@ -1021,6 +1021,14 @@ const getPropsForMessage = (
     selectedReaction,
     status: getMessagePropStatus(message, ourConversationId),
     text: message.body,
+    // Custom: original contents preserved when deleted-for-everyone, used to
+    // render "<original text> (deleted)" in the bubble.
+    originalText: message.originalBody,
+    originalBodyRanges: processBodyRanges(
+      { bodyRanges: message.originalBodyRanges },
+      isGroup,
+      options
+    ),
     textDirection: getTextDirection(message.body),
     timestamp: getMessageSentTimestamp(message, { includeEdits: false, log }),
     receivedAtMS: message.received_at_ms,
