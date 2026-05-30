@@ -108,7 +108,9 @@ jobs:
 
   windows:
     name: Windows
-    runs-on: windows-latest
+    # Pinned to 2022 (VS 2022): windows-latest now redirects to VS 2026, which
+    # Signal's bundled @electron/node-gyp can't detect, breaking native builds.
+    runs-on: windows-2022
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
