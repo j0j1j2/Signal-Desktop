@@ -1,0 +1,174 @@
+# Copyright 2026 Signal Messenger, LLC
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Builds unsigned per-platform release artifacts for this fork.
+# Run manually from the Actions tab (workflow_dispatch), or push a tag like
+# `v8.15.0-alpha.1` to also publish a GitHub Release with the artifacts attached.
+#
+# NOTE: builds are UNSIGNED. macOS apps are ad-hoc signed so they launch on
+# Apple Silicon (right-click -> Open on first run). Windows is unsigned
+# (SmartScreen warning). Linux .deb / AppImage run normally.
+
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+      - name: Setup node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - name: Cache .electron-gyp
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.electron-gyp
+          key: electron-gyp-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install node_modules
+        run: pnpm install
+        env:
+          NPM_CONFIG_NODE_GYP: echo
+      - run: pnpm run generate
+      - run: pnpm run build:rolldown:prod
+      - name: Package (unsigned, both arches)
+        run: pnpm run build:release --arm64 --x64 --config.mac.target=dir --config.mac.identity=null --publish=never
+        env:
+          SKIP_SIGNING_SCRIPT: '1'
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          DISABLE_INSPECT_FUSE: 'on'
+      - name: Ad-hoc sign and zip each arch
+        run: |
+          shopt -s nullglob
+          for app in release/mac*/Signal.app; do
+            arch=$(lipo -archs "$app/Contents/MacOS/Signal" | tr ' ' '_')
+            echo "Signing $app ($arch)"
+            codesign --force --deep --sign - "$app"
+            ditto -c -k --keepParent "$app" "release/Signal-mac-${arch}.zip"
+          done
+          ls -lh release/Signal-mac-*.zip
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: signal-macos
+          path: release/Signal-mac-*.zip
+          if-no-files-found: error
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+      - name: Setup node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - name: Cache .electron-gyp
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.electron-gyp
+          key: electron-gyp-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install libpulse0
+        run: sudo apt-get install -y libpulse0 || (sudo apt-get update && sudo apt-get install -y libpulse0)
+      - name: Install node_modules
+        run: pnpm install
+        env:
+          NPM_CONFIG_NODE_GYP: echo
+      - run: pnpm run generate
+      - run: pnpm run build:rolldown:prod
+      - name: Package (.deb + AppImage)
+        run: pnpm run build:release --linux deb AppImage --publish=never
+        env:
+          DISABLE_INSPECT_FUSE: 'on'
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: signal-linux
+          path: |
+            release/*.deb
+            release/*.AppImage
+          if-no-files-found: error
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+      - name: Setup node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+      - name: Cache .electron-gyp
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.electron-gyp
+          key: electron-gyp-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: New-Item -ItemType File -Path noop.js
+      - name: Install node_modules
+        run: pnpm install
+        env:
+          NPM_CONFIG_NODE_GYP: ${{ github.workspace }}\noop.js
+      # Remove the code-signing certificate fields so electron-builder / the
+      # custom sign script skip signing (see scripts/sign-windows.mjs).
+      - name: Strip signing config from package.json
+        shell: cmd
+        run: |
+          copy package.json temp.json
+          del package.json
+          type temp.json | findstr /v certificateSubjectName | findstr /v certificateSha1 > package.json
+      - run: pnpm run generate
+      - run: pnpm run build:rolldown:prod
+      - name: Package (NSIS, unsigned)
+        run: pnpm run build:release --publish=never
+        env:
+          DISABLE_INSPECT_FUSE: 'on'
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: signal-windows
+          path: release/*.exe
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [macos, linux, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Unsigned community build. macOS apps are ad-hoc signed (right-click → Open on first launch). Windows is unsigned (SmartScreen warning is expected)." \
+            $(find dist -type f | sort)
