@@ -74,6 +74,17 @@ export function DialogUpdate({
     [startUpdate]
   );
 
+  // Custom: suppress the "Cannot Update" error dialogs entirely. This is a
+  // locally-built, unsigned fork that can't auto-update, so these errors are
+  // just noise. (Placed after hooks to keep React's hook order stable.)
+  if (
+    dialogType === DialogType.Cannot_Update ||
+    dialogType === DialogType.Cannot_Update_Require_Manual ||
+    dialogType === DialogType.MacOS_Read_Only
+  ) {
+    return null;
+  }
+
   if (dialogType === DialogType.Cannot_Update) {
     const url = isBeta(currentVersion)
       ? BETA_DOWNLOAD_URL
