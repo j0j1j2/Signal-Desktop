@@ -55,6 +55,7 @@ const messageAttributesEraseBehavior: Record<
   // deleted-for-everyone bubble can keep showing the original text.
   originalBody: 'preserve',
   originalBodyRanges: 'preserve',
+  expirationDeprecated: 'preserve',
   readAt: 'preserve',
   readStatus: 'preserve',
   received_at_ms: 'preserve',

@@ -4,12 +4,11 @@ import lodash from 'lodash';
 
 import * as Errors from '../types/errors.std.ts';
 import { createLogger } from '../logging/log.std.ts';
-import { DataReader, DataWriter } from '../sql/Client.preload.ts';
+import { DataReader } from '../sql/Client.preload.ts';
 import { clearTimeoutIfNecessary } from '../util/clearTimeoutIfNecessary.std.ts';
 import { sleep } from '../util/sleep.std.ts';
 import { SECOND } from '../util/durations/index.std.ts';
 import { MessageModel } from '../models/messages.preload.ts';
-import { cleanupMessages } from '../util/cleanup.preload.ts';
 import { drop } from '../util/drop.std.ts';
 
 const { debounce } = lodash;
@@ -35,26 +34,26 @@ class ExpiringMessagesDeletionService {
         `destroyExpiredMessages: found ${messages.length} messages to expire`
       );
 
-      const messageIds: Array<string> = [];
-      const inMemoryMessages: Array<MessageModel> = [];
-
-      messages.forEach(dbMessage => {
+      // Custom: instead of deleting disappearing messages when their timer
+      // expires, keep them. We clear the expiration fields (so the GENERATED
+      // `expiresAt` column becomes NULL and they're no longer picked up by
+      // getExpiredMessages) and mark them so the UI shows a "(deprecated)"
+      // suffix.
+      for (const dbMessage of messages) {
         const message = window.MessageCache.register(
           new MessageModel(dbMessage)
         );
-        messageIds.push(message.id);
-        inMemoryMessages.push(message);
-      });
-
-      await DataWriter.removeMessagesById(messageIds, {
-        cleanupMessages,
-      });
-
-      inMemoryMessages.forEach(message => {
-        log.info('Message expired', {
+        message.set({
+          expirationDeprecated: true,
+          expireTimer: undefined,
+          expirationStartTimestamp: undefined,
+        });
+        // eslint-disable-next-line no-await-in-loop
+        await window.MessageCache.saveMessage(message.attributes);
+        log.info('Message kept past expiry', {
           sentAt: message.get('sent_at'),
         });
-      });
+      }
     } catch (error) {
       log.error(
         'destroyExpiredMessages: Error deleting expired messages',

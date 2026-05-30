@@ -3582,6 +3582,10 @@
     "messageformat": "(deleted)",
     "description": "Suffix shown after the original text of a message that was deleted for everyone."
   },
+  "icu:message--expirationDeprecatedSuffix": {
+    "messageformat": "(expired)",
+    "description": "Suffix shown after a disappearing message that was kept past its expiry instead of being deleted."
+  },
   "icu:message--attachmentTooBig--one": {
     "messageformat": "Attachment too large to display.",
     "description": "Shown in a message bubble if no attachments are left on message when too-large attachments are dropped"

@@ -1192,6 +1192,13 @@ $message-padding-horizontal: 12px;
   font-style: italic;
 }
 
+// Custom: "(deprecated)" marker appended to a disappearing message that was
+// kept past its expiry.
+.module-message__deprecated-suffix {
+  font-style: italic;
+  opacity: 0.7;
+}
+
 .module-message__metadata {
   @include mixins.font-caption;
 

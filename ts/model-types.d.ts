@@ -250,6 +250,9 @@ export type MessageAttributesType = {
   // strikethrough instead of a "X deleted this message" tombstone.
   originalBody?: string;
   originalBodyRanges?: ReadonlyArray<RawBodyRange>;
+  // Custom: set when a disappearing message reached its expiry but was kept
+  // (instead of being deleted). The bubble shows a "(deprecated)" suffix.
+  expirationDeprecated?: boolean;
   attachments?: ReadonlyArray<AttachmentType>;
   preview?: ReadonlyArray<LinkPreviewType>;
   sticker?: StickerType;

@@ -130,7 +130,6 @@ const { drop, take, unescape } = lodash;
 const log = createLogger('Message');
 
 const EXPIRATION_CHECK_MINIMUM = 2000;
-const EXPIRED_DELAY = 600;
 const GROUP_AVATAR_SIZE = AvatarSize.TWENTY_EIGHT;
 const STICKER_SIZE = 200;
 const GIF_SIZE = 300;
@@ -323,6 +322,8 @@ export type PropsData = {
   // "<original text> (deleted)" with a strikethrough.
   originalText?: string;
   originalBodyRanges?: HydratedBodyRangesType;
+  // Custom: disappearing message kept past its expiry → append "(deprecated)".
+  expirationDeprecated?: boolean;
 
   renderMenu?: () => JSX.Element | undefined;
   renderMessageContextMenu?: (
@@ -949,28 +950,16 @@ export class Message extends PureComponent<Props, State> {
   }
 
   public checkExpired(): void {
-    const now = Date.now();
     const { expirationTimestamp, expirationLength } = this.props;
 
     if (!expirationTimestamp || !expirationLength) {
       return;
     }
-    if (this.expiredTimeout) {
-      return;
-    }
 
-    if (now >= expirationTimestamp) {
-      this.setState({
-        expiring: true,
-      });
-
-      const setExpired = () => {
-        this.setState({
-          expired: true,
-        });
-      };
-      this.expiredTimeout = setTimeout(setExpired, EXPIRED_DELAY);
-    }
+    // Custom: disappearing messages are kept (see the expiringMessagesDeletion
+    // service), so we never mark a message as expiring/expired or fade it out
+    // of the timeline when its timer elapses. The "(expired)" suffix is shown
+    // instead once the message is kept past its expiry.
   }
 
   #areLinksEnabled(): boolean {
@@ -2427,6 +2416,7 @@ export class Message extends PureComponent<Props, State> {
       messageExpanded,
       originalText,
       originalBodyRanges,
+      expirationDeprecated,
       payment,
       showConversation,
       showSpoiler,
@@ -2447,7 +2437,8 @@ export class Message extends PureComponent<Props, State> {
     if (
       messageStatusContents == null &&
       text == null &&
-      !showOriginalOnDelete
+      !showOriginalOnDelete &&
+      !expirationDeprecated
     ) {
       return null;
     }
@@ -2541,6 +2532,12 @@ export class Message extends PureComponent<Props, State> {
             text={text}
             textAttachment={textAttachment}
           />
+        )}
+        {expirationDeprecated && !deletedForEveryone && (
+          <span className="module-message__deprecated-suffix">
+            {text != null ? ' ' : null}
+            {i18n('icu:message--expirationDeprecatedSuffix')}
+          </span>
         )}
         {this.#getMetadataPlacement() === MetadataPlacement.InlineWithText && (
           <MessageTextMetadataSpacer metadataWidth={metadataWidth} />

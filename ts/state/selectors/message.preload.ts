@@ -1029,6 +1029,8 @@ const getPropsForMessage = (
       isGroup,
       options
     ),
+    // Custom: kept-past-expiry disappearing message → show "(deprecated)".
+    expirationDeprecated: message.expirationDeprecated || false,
     textDirection: getTextDirection(message.body),
     timestamp: getMessageSentTimestamp(message, { includeEdits: false, log }),
     receivedAtMS: message.received_at_ms,
