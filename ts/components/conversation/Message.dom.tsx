@@ -324,6 +324,10 @@ export type PropsData = {
   originalBodyRanges?: HydratedBodyRangesType;
   // Custom: disappearing message kept past its expiry → append "(deprecated)".
   expirationDeprecated?: boolean;
+  // Custom: people the outgoing message has reached, shown as small inline
+  // avatars beneath the message. `hasRead` recipients render brightly,
+  // delivered-only recipients render dimmed.
+  readBy?: ReadonlyArray<ConversationType & { hasRead: boolean }>;
 
   renderMenu?: () => JSX.Element | undefined;
   renderMessageContextMenu?: (
@@ -1105,6 +1109,50 @@ export class Message extends PureComponent<Props, State> {
         textPending={textAttachment?.pending}
         timestamp={timestamp}
       />
+    );
+  }
+
+  // Custom: render small avatars of group members who have read this outgoing
+  // message, so you can see who has seen it without opening message details.
+  #renderReadBy(): ReactNode {
+    const { readBy, direction, i18n } = this.props;
+    if (direction !== 'outgoing' || !readBy || readBy.length === 0) {
+      return null;
+    }
+
+    const MAX_AVATARS = 5;
+    const shown = readBy.slice(0, MAX_AVATARS);
+    const overflow = readBy.length - shown.length;
+
+    return (
+      <div className="module-message__read-by">
+        {shown.map(contact => (
+          <Avatar
+            key={contact.id}
+            avatarPlaceholderGradient={contact.avatarPlaceholderGradient}
+            avatarUrl={contact.avatarUrl}
+            badge={undefined}
+            className={classNames(
+              'module-message__read-by__avatar',
+              !contact.hasRead &&
+                'module-message__read-by__avatar--delivered'
+            )}
+            color={contact.color}
+            conversationType="direct"
+            hasAvatar={contact.hasAvatar}
+            i18n={i18n}
+            phoneNumber={contact.phoneNumber}
+            profileName={contact.profileName}
+            size={AvatarSize.TWENTY}
+            title={contact.title}
+          />
+        ))}
+        {overflow > 0 && (
+          <span className="module-message__read-by__overflow">
+            {`+${overflow}`}
+          </span>
+        )}
+      </div>
     );
   }
 
@@ -3096,6 +3144,7 @@ export class Message extends PureComponent<Props, State> {
         {this.renderUndownloadableTextAttachment()}
         {this.#renderAction()}
         {this.#renderMetadata()}
+        {this.#renderReadBy()}
         {this.renderSendMessageButton()}
       </>
     );

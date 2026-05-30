@@ -1031,6 +1031,25 @@ const getPropsForMessage = (
     ),
     // Custom: kept-past-expiry disappearing message → show "(deprecated)".
     expirationDeprecated: message.expirationDeprecated || false,
+    // Custom: avatars of people the outgoing message has reached (delivered or
+    // read), shown inline next to the message metadata. `hasRead` lets the UI
+    // render readers brightly and delivered-only recipients dimmed. Read info
+    // only arrives if the recipient sends read receipts.
+    readBy:
+      isOutgoing(message) && message.sendStateByConversationId
+        ? Object.entries(message.sendStateByConversationId)
+            .filter(
+              ([id, sendState]) =>
+                id !== ourConversationId &&
+                (sendState.status === SendStatus.Delivered ||
+                  isRead(sendState.status))
+            )
+            .map(([id, sendState]) => ({
+              ...conversationSelector(id),
+              hasRead: isRead(sendState.status),
+            }))
+            .sort((a, b) => Number(b.hasRead) - Number(a.hasRead))
+        : [],
     textDirection: getTextDirection(message.body),
     timestamp: getMessageSentTimestamp(message, { includeEdits: false, log }),
     receivedAtMS: message.received_at_ms,
