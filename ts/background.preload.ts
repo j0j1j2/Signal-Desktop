@@ -2244,10 +2244,9 @@ async function startApp(): Promise<void> {
     const { typing, sender, senderAci, senderDevice } = ev;
     const { groupV2Id, started } = typing || {};
 
-    // We don't do anything with incoming typing messages if the setting is disabled
-    if (!itemStorage.get('typingIndicators')) {
-      return;
-    }
+    // Custom: one-directional stealth. Always display others' typing indicators,
+    // even when the "typing indicators" setting is off (which still stops us
+    // from *sending* our own — see conversations.preload.ts bumpTyping()).
 
     let conversation;
 

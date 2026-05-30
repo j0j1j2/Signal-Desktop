@@ -398,12 +398,17 @@ const shouldDropReceipt = (
     case messageReceiptTypeSchema.enum.Delivery:
       return false;
     case messageReceiptTypeSchema.enum.Read:
-      return !itemStorage.get('read-receipt-setting');
+      // Custom: one-directional stealth. Always accept incoming read receipts
+      // so we keep seeing others' read status, even when the "read receipts"
+      // setting is off (which still stops us from *sending* our own — see
+      // sendReceipts.preload.ts).
+      return false;
     case messageReceiptTypeSchema.enum.View:
       if (isStory(message)) {
         return !areStoryViewReceiptsEnabled();
       }
-      return !itemStorage.get('read-receipt-setting');
+      // Custom: see above — always accept incoming view receipts.
+      return false;
     default:
       throw missingCaseError(type);
   }
