@@ -83,8 +83,14 @@ export async function eraseMessageContents(
 
   // Cleanup files only after saving message so any files only referenced by that message
   // are properly deleted
+  // Custom: when deleting for everyone we keep the sticker (see Message.std.ts),
+  // so exclude it from cleanup to preserve its file and pack reference.
+  const attributesForCleanup =
+    reason === 'delete-for-everyone' && originalAttributes.sticker
+      ? { ...originalAttributes, sticker: undefined }
+      : originalAttributes;
   try {
-    await cleanupFilesAndReferencesToMessage(originalAttributes);
+    await cleanupFilesAndReferencesToMessage(attributesForCleanup);
   } catch (error) {
     log.error(
       `Error erasing data for message ${getMessageIdForLogging(message.attributes)}:`,

@@ -3106,9 +3106,24 @@ export class Message extends PureComponent<Props, State> {
   }
 
   public renderContents(): JSX.Element | null {
-    const { deletedForEveryone, giftBadge, isTapToView } = this.props;
+    const { deletedForEveryone, giftBadge, i18n, isSticker, isTapToView } =
+      this.props;
 
     if (deletedForEveryone) {
+      // Custom: a deleted-for-everyone sticker keeps its image (see
+      // eraseMessageContents) — show it with a "(deleted)" caption instead of
+      // the plain tombstone.
+      if (isSticker) {
+        return (
+          <>
+            {this.renderAttachment()}
+            <div className="module-message__sticker-deleted-caption">
+              {i18n('icu:message--deletedForEveryone--deletedSuffix')}
+            </div>
+            {this.#renderMetadata()}
+          </>
+        );
+      }
       return (
         <>
           {this.renderText()}

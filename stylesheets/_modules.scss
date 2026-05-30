@@ -1199,6 +1199,15 @@ $message-padding-horizontal: 12px;
   opacity: 0.7;
 }
 
+// Custom: "(deleted)" caption under a deleted-for-everyone sticker.
+.module-message__sticker-deleted-caption {
+  @include mixins.font-caption;
+  margin-top: 2px;
+  font-style: italic;
+  text-align: center;
+  color: light-dark(variables.$color-gray-60, variables.$color-gray-25);
+}
+
 // Custom: inline avatars of group members who have read an outgoing message.
 .module-message__read-by {
   display: flex;

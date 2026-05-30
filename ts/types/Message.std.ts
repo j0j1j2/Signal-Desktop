@@ -111,7 +111,10 @@ const messageAttributesEraseBehavior: Record<
   quote: 'erase',
   sendHQImages: 'erase',
   sms: 'erase',
-  sticker: 'erase',
+  // Custom: keep the sticker (and its file — see eraseMessageContents) when a
+  // message is deleted for everyone, so the bubble can still show the original
+  // sticker with a "(deleted)" caption. Other erase reasons still erase it.
+  sticker: reason => (reason === 'delete-for-everyone' ? 'preserve' : 'erase'),
   storyDistributionListId: 'erase',
   storyReaction: 'erase',
   storyRecipientsVersion: 'erase',
