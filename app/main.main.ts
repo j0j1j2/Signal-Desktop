@@ -1131,6 +1131,19 @@ ipc.on('set-is-call-active', (_event, isCallActive) => {
   preventDisplaySleepService.setEnabled(isCallActive);
 });
 
+// Custom: let the renderer adjust the main window's opacity (transparency).
+ipc.on('set-window-opacity', (_event, opacity) => {
+  if (!mainWindow) {
+    return;
+  }
+  const value = Number(opacity);
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  // Keep a floor so the window can never become fully invisible / unusable.
+  mainWindow.setOpacity(Math.max(0.2, Math.min(1, value)));
+});
+
 ipc.on('convert-image', async (event, uuid, data) => {
   const { error, response } = await heicConverter(uuid, data);
   event.reply(`convert-image:${uuid}`, { error, response });

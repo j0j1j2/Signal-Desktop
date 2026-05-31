@@ -324,6 +324,8 @@ export type PropsData = {
   originalBodyRanges?: HydratedBodyRangesType;
   // Custom: disappearing message kept past its expiry → append "(deprecated)".
   expirationDeprecated?: boolean;
+  // Custom: local echo of a raw-protobuf debug send → distinct bubble color.
+  rawProtoEcho?: boolean;
   // Custom: people the outgoing message has reached, shown as small inline
   // avatars beneath the message. `hasRead` recipients render brightly,
   // delivered-only recipients render dimmed.
@@ -3431,6 +3433,9 @@ export class Message extends PureComponent<Props, State> {
       this.#hasReactions() ? 'module-message__container--with-reactions' : null,
       deletedForEveryone
         ? 'module-message__container--deleted-for-everyone'
+        : null,
+      this.props.rawProtoEcho
+        ? 'module-message__container--raw-proto-echo'
         : null,
       this.props.isSignalConversation
         ? tw(

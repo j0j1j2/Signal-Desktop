@@ -1031,6 +1031,8 @@ const getPropsForMessage = (
     ),
     // Custom: kept-past-expiry disappearing message → show "(deprecated)".
     expirationDeprecated: message.expirationDeprecated || false,
+    // Custom: local echo of a raw-protobuf debug send (distinct color).
+    rawProtoEcho: message.rawProtoEcho || false,
     // Custom: avatars of people the outgoing message has reached (delivered or
     // read), shown inline next to the message metadata. `hasRead` lets the UI
     // render readers brightly and delivered-only recipients dimmed. Read info

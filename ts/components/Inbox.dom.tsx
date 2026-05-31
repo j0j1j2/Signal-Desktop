@@ -4,6 +4,8 @@
 import type { ReactNode, JSX } from 'react';
 import type { SmartNavTabsProps } from '../state/smart/NavTabs.preload.tsx';
 import { TitlebarDragArea } from './TitlebarDragArea.dom.tsx';
+import { OpacitySlider } from './OpacitySlider.dom.tsx';
+import { ProtoSendModal } from './ProtoSendModal.dom.tsx';
 
 export type PropsType = {
   isCustomizingPreferredReactions: boolean;
@@ -45,6 +47,8 @@ export function Inbox({
           renderSettingsTab,
         })}
         <TitlebarDragArea />
+        <OpacitySlider />
+        <ProtoSendModal />
       </div>
       {activeModal}
     </>

@@ -253,6 +253,9 @@ export type MessageAttributesType = {
   // Custom: set when a disappearing message reached its expiry but was kept
   // (instead of being deleted). The bubble shows a "(deprecated)" suffix.
   expirationDeprecated?: boolean;
+  // Custom: local echo of a message sent via the raw-protobuf debug tool, so it
+  // can be rendered in a distinct color.
+  rawProtoEcho?: boolean;
   attachments?: ReadonlyArray<AttachmentType>;
   preview?: ReadonlyArray<LinkPreviewType>;
   sticker?: StickerType;

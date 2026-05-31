@@ -509,6 +509,12 @@ $message-padding-horizontal: 12px;
   }
 }
 
+// Custom: local echo of a raw-protobuf debug send — distinct violet bubble.
+.module-message__container--raw-proto-echo {
+  background: #7a3ea3 !important;
+  background-image: none !important;
+}
+
 .module-message__container--deleted-for-everyone {
   @include mixins.light-theme {
     color: variables.$color-gray-90;
@@ -1197,6 +1203,224 @@ $message-padding-horizontal: 12px;
 .module-message__deprecated-suffix {
   font-style: italic;
   opacity: 0.7;
+}
+
+// Custom (research/debug): raw protobuf send modal.
+.ProtoSend {
+  &__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: variables.$z-index-on-top-of-everything + 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    -webkit-app-region: no-drag;
+  }
+
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 480px;
+    max-width: 90vw;
+    padding: 16px;
+    border-radius: 12px;
+    background: light-dark(variables.$color-white, variables.$color-gray-80);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+  }
+
+  &__title {
+    @include mixins.font-title-2;
+    font-weight: 600;
+  }
+
+  &__warn {
+    @include mixins.font-caption;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: light-dark(variables.$color-gray-05, variables.$color-gray-75);
+    color: light-dark(variables.$color-gray-75, variables.$color-gray-15);
+
+    code {
+      font-family: monospace;
+    }
+  }
+
+  &__presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__preset {
+    @include mixins.button-reset;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: light-dark(variables.$color-gray-05, variables.$color-gray-65);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+
+    &:hover {
+      background: light-dark(
+        variables.$color-gray-15,
+        variables.$color-gray-60
+      );
+    }
+  }
+
+  &__members {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__attach {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__upload {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    background: light-dark(variables.$color-gray-05, variables.$color-gray-65);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+  }
+
+  &__upload-remove {
+    @include mixins.button-reset;
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.6;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__members-label {
+    @include mixins.font-caption;
+    color: light-dark(variables.$color-gray-60, variables.$color-gray-25);
+  }
+
+  &__member {
+    @include mixins.button-reset;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid
+      light-dark(variables.$color-gray-15, variables.$color-gray-60);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+
+    &:hover {
+      background: light-dark(
+        variables.$color-gray-05,
+        variables.$color-gray-65
+      );
+    }
+  }
+
+  &__textarea {
+    width: 100%;
+    height: 180px;
+    resize: vertical;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid
+      light-dark(variables.$color-gray-15, variables.$color-gray-60);
+    background: light-dark(variables.$color-white, variables.$color-gray-90);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  &__status {
+    @include mixins.font-caption;
+    word-break: break-word;
+    color: light-dark(variables.$color-gray-75, variables.$color-gray-15);
+  }
+
+  &__buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__echo {
+    @include mixins.font-caption;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: light-dark(variables.$color-gray-75, variables.$color-gray-15);
+  }
+
+  &__btn {
+    @include mixins.button-reset;
+    padding: 6px 16px;
+    border-radius: 8px;
+    background: light-dark(variables.$color-gray-05, variables.$color-gray-65);
+    color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+
+    &--send {
+      background: variables.$color-ultramarine;
+      color: variables.$color-white;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}
+
+// Custom: always-visible window transparency control at the top of the app.
+.OpacityControl {
+  position: fixed;
+  top: 9px;
+  inset-inline-end: 16px;
+  // Above the title-bar drag area (z 9000), otherwise the drag region
+  // swallows the slider's mouse events and dragging won't work.
+  z-index: variables.$z-index-on-top-of-everything + 1;
+  display: flex;
+  align-items: center;
+  width: 84px;
+  // Keep this clickable even though it sits in the draggable title-bar area.
+  -webkit-app-region: no-drag;
+  user-select: none;
+  // No visible boundary — blends into the title bar; brightens on hover.
+  opacity: 0.45;
+  transition: opacity 150ms ease;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  // Thin track + small handle (smaller than the default Slider).
+  &__slider {
+    height: 3px;
+    border-radius: 2px;
+    background-color: light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.35));
+
+    &__handle {
+      width: 10px;
+      height: 10px;
+      margin-top: -4px;
+      margin-inline-start: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      background-color: variables.$color-white;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+    }
+  }
 }
 
 // Custom: "(deleted)" caption under a deleted-for-everyone sticker.

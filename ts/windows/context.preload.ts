@@ -73,6 +73,8 @@ export type SignalContextType = {
   bytes: Bytes;
   crypto: Crypto;
   setIsCallActive: (isCallActive: boolean) => unknown;
+  // Custom: adjust the main window's opacity (0..1).
+  setWindowOpacity: (opacity: number) => unknown;
   timers: Timers;
   Emojify: typeof Emojify;
   getLocalizedEmojiList: (locale: string) => Promise<LocaleEmojiListType>;
@@ -87,6 +89,9 @@ export const SignalContext: SignalContextType = {
   i18n,
   setIsCallActive(isCallActive: boolean): void {
     ipcRenderer.send('set-is-call-active', isCallActive);
+  },
+  setWindowOpacity(opacity: number): void {
+    ipcRenderer.send('set-window-opacity', opacity);
   },
   timers: new Timers(),
   Emojify,

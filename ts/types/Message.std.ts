@@ -56,6 +56,7 @@ const messageAttributesEraseBehavior: Record<
   originalBody: 'preserve',
   originalBodyRanges: 'preserve',
   expirationDeprecated: 'preserve',
+  rawProtoEcho: 'preserve',
   readAt: 'preserve',
   readStatus: 'preserve',
   received_at_ms: 'preserve',
