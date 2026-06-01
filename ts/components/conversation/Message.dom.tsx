@@ -3108,14 +3108,22 @@ export class Message extends PureComponent<Props, State> {
   }
 
   public renderContents(): JSX.Element | null {
-    const { deletedForEveryone, giftBadge, i18n, isSticker, isTapToView } =
-      this.props;
+    const {
+      attachments,
+      deletedForEveryone,
+      giftBadge,
+      i18n,
+      isSticker,
+      isTapToView,
+    } = this.props;
 
     if (deletedForEveryone) {
-      // Custom: a deleted-for-everyone sticker keeps its image (see
-      // eraseMessageContents) — show it with a "(deleted)" caption instead of
-      // the plain tombstone.
-      if (isSticker) {
+      // Custom: a deleted-for-everyone sticker or attachment (e.g. photo) keeps
+      // its file (see eraseMessageContents) — show it with a "(deleted)" caption
+      // instead of the plain tombstone.
+      const hasKeptMedia =
+        isSticker || (attachments != null && attachments.length > 0);
+      if (hasKeptMedia) {
         return (
           <>
             {this.renderAttachment()}

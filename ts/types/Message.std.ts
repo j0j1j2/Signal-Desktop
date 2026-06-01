@@ -74,7 +74,10 @@ const messageAttributesEraseBehavior: Record<
   synced: 'preserve',
   unidentifiedDeliveries: 'preserve',
 
-  attachments: 'erase',
+  // Custom: keep attachments (e.g. photos) when deleted for everyone, like the
+  // sticker case, so the bubble can show the image with a "(deleted)" caption.
+  attachments: reason =>
+    reason === 'delete-for-everyone' ? 'preserve' : 'erase',
   body: 'erase',
   bodyAttachment: 'erase',
   bodyRanges: 'erase',

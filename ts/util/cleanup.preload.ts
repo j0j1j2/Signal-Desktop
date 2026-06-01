@@ -83,11 +83,12 @@ export async function eraseMessageContents(
 
   // Cleanup files only after saving message so any files only referenced by that message
   // are properly deleted
-  // Custom: when deleting for everyone we keep the sticker (see Message.std.ts),
-  // so exclude it from cleanup to preserve its file and pack reference.
+  // Custom: when deleting for everyone we keep the sticker AND attachments (see
+  // Message.std.ts) so the bubble can still show them, so exclude their files
+  // (and the sticker pack reference) from cleanup.
   const attributesForCleanup =
-    reason === 'delete-for-everyone' && originalAttributes.sticker
-      ? { ...originalAttributes, sticker: undefined }
+    reason === 'delete-for-everyone'
+      ? { ...originalAttributes, sticker: undefined, attachments: undefined }
       : originalAttributes;
   try {
     await cleanupFilesAndReferencesToMessage(attributesForCleanup);
