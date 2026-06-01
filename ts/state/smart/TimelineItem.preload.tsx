@@ -45,7 +45,6 @@ import { TargetedMessageSource } from '../ducks/conversationsEnums.std.ts';
 import { MessageInteractivity } from '../../components/conversation/Message.dom.tsx';
 import { useNavActions } from '../ducks/nav.std.ts';
 import { DataReader } from '../../sql/Client.preload.ts';
-import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.ts';
 import type { CollapseSet } from '../../util/CollapseSet.std.ts';
 import { isSignalConversation } from '../../util/isSignalConversation.dom.ts';
 
@@ -230,15 +229,15 @@ export const SmartTimelineItem = memo(function SmartTimelineItem(
   );
 
   const handleDebugMessage = useCallback(async () => {
-    if (!isInternalFeaturesEnabled()) {
-      return;
-    }
     const message = await DataReader.getMessageById(messageId);
     // oxlint-disable-next-line no-console
     console.debug(message);
-    await window.navigator.clipboard.writeText(
-      JSON.stringify(message, null, 2)
-    );
+    // Custom: show the decoded message (proto-level fields) in a modal viewer.
+    (
+      window as unknown as {
+        openRawMessageInspector?: (data: unknown) => void;
+      }
+    ).openRawMessageInspector?.(message);
   }, [messageId]);
 
   const isSignalConvo = isSignalConversation({ id: conversationId });

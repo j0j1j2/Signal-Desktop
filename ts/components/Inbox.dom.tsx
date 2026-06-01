@@ -6,6 +6,7 @@ import type { SmartNavTabsProps } from '../state/smart/NavTabs.preload.tsx';
 import { TitlebarDragArea } from './TitlebarDragArea.dom.tsx';
 import { OpacitySlider } from './OpacitySlider.dom.tsx';
 import { ProtoSendModal } from './ProtoSendModal.dom.tsx';
+import { RawMessageModal } from './RawMessageModal.dom.tsx';
 
 export type PropsType = {
   isCustomizingPreferredReactions: boolean;
@@ -49,6 +50,7 @@ export function Inbox({
         <TitlebarDragArea />
         <OpacitySlider />
         <ProtoSendModal />
+        <RawMessageModal />
       </div>
       {activeModal}
     </>

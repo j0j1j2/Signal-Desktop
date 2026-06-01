@@ -4,7 +4,6 @@
 import { useRef, type ReactNode, type JSX } from 'react';
 import type { LocalizerType } from '../../types/I18N.std.ts';
 import { AxoMenuBuilder } from '../../axo/AxoMenuBuilder.dom.tsx';
-import { isInternalFeaturesEnabled } from '../../util/isInternalFeaturesEnabled.dom.ts';
 
 type MessageContextMenuProps = Readonly<{
   i18n: LocalizerType;
@@ -165,15 +164,12 @@ export function MessageContextMenu({
             {i18n('icu:retryDeleteForEveryone')}
           </AxoMenuBuilder.Item>
         )}
-        {isInternalFeaturesEnabled() && onDebugMessage && (
+        {onDebugMessage && (
           <>
             <AxoMenuBuilder.Separator />
-            <AxoMenuBuilder.Group>
-              <AxoMenuBuilder.Label>Internal</AxoMenuBuilder.Label>
-              <AxoMenuBuilder.Item symbol="copy" onSelect={onDebugMessage}>
-                Copy & debug message
-              </AxoMenuBuilder.Item>
-            </AxoMenuBuilder.Group>
+            <AxoMenuBuilder.Item symbol="copy" onSelect={onDebugMessage}>
+              Show raw proto
+            </AxoMenuBuilder.Item>
           </>
         )}
       </AxoMenuBuilder.Content>
