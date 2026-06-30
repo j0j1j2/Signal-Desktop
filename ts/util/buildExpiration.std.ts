@@ -1,14 +1,10 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { Environment, getEnvironment } from '../environment.std.ts';
 import type { LoggerType } from '../types/Logging.std.ts';
 import { isNotUpdatable } from './version.std.ts';
-import { isInPast } from './timestamp.std.ts';
 import { DAY } from './durations/index.std.ts';
 
-const NINETY_ONE_DAYS = 91 * DAY;
-const THIRTY_ONE_DAYS = 31 * DAY;
 const SIXTY_DAYS = 60 * DAY;
 
 export type GetBuildExpirationTimestampOptionsType = Readonly<{
@@ -53,36 +49,12 @@ export type HasBuildExpiredOptionsType = Readonly<{
   logger: LoggerType;
 }>;
 
-export function hasBuildExpired({
-  buildExpirationTimestamp,
-  autoDownloadUpdate,
-  now,
-  logger,
-}: HasBuildExpiredOptionsType): boolean {
-  if (
-    getEnvironment() !== Environment.PackagedApp &&
-    buildExpirationTimestamp === 0
-  ) {
-    return false;
-  }
-
-  if (isInPast(buildExpirationTimestamp)) {
-    return true;
-  }
-
-  const safeExpirationMs = autoDownloadUpdate
-    ? NINETY_ONE_DAYS
-    : THIRTY_ONE_DAYS;
-
-  const buildExpirationDuration = buildExpirationTimestamp - now;
-  const tooFarIntoFuture = buildExpirationDuration > safeExpirationMs;
-
-  if (tooFarIntoFuture) {
-    logger.error(
-      'Build expiration is set too far into the future',
-      buildExpirationTimestamp
-    );
-  }
-
-  return tooFarIntoFuture || isInPast(buildExpirationTimestamp);
+export function hasBuildExpired(
+  _options: HasBuildExpiredOptionsType
+): boolean {
+  // Custom: never treat this build as expired. Disables the "This version of
+  // Signal Desktop has expired" warning dialog and the expired-build send
+  // block. This is a locally-built, non-updating fork, so the official ~90-day
+  // build expiry is just noise.
+  return false;
 }
