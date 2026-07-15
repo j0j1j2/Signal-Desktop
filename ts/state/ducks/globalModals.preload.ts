@@ -1459,6 +1459,14 @@ function copyOverMessageAttributesIntoEditHistory(
     editMessageTimestamp: undefined,
     quote: undefined,
     preview: [],
+    // Custom: if the base message was deleted-for-everyone we still preserve its
+    // edit history, but each historical version should render as its own content
+    // rather than the collapsed "(deleted)" representation of the base message.
+    deletedForEveryone: undefined,
+    deletedForEveryoneByAdminAci: undefined,
+    isErased: undefined,
+    originalBody: undefined,
+    originalBodyRanges: undefined,
     ...editedMessageAttributes,
     // For timestamp uniqueness of messages
     sent_at: editedMessageAttributes.timestamp,

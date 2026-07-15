@@ -88,7 +88,12 @@ export async function eraseMessageContents(
   // (and the sticker pack reference) from cleanup.
   const attributesForCleanup =
     reason === 'delete-for-everyone'
-      ? { ...originalAttributes, sticker: undefined, attachments: undefined }
+      ? {
+          ...originalAttributes,
+          sticker: undefined,
+          attachments: undefined,
+          editHistory: undefined,
+        }
       : originalAttributes;
   try {
     await cleanupFilesAndReferencesToMessage(attributesForCleanup);

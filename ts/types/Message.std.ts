@@ -88,7 +88,10 @@ const messageAttributesEraseBehavior: Record<
   dataMessage: 'erase',
   decrypted_at: 'erase',
   droppedGV2MemberIds: 'erase',
-  editHistory: 'erase',
+  // Custom: keep the edit history when deleted for everyone, so the "Edited"
+  // affordance still opens the previous versions.
+  editHistory: reason =>
+    reason === 'delete-for-everyone' ? 'preserve' : 'erase',
   expirationTimerUpdate: 'erase',
   flags: 'erase',
   giftBadge: 'erase',
