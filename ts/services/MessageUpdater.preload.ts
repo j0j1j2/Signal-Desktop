@@ -27,6 +27,7 @@ import {
 } from '../jobs/conversationJobQueue.preload.ts';
 import { ReceiptType } from '../types/Receipt.std.ts';
 import { isDirectConversation } from '../util/whatTypeOfConversation.dom.ts';
+import { shouldEraseViewOnceMedia } from '../util/viewOnceRetention.std.ts';
 
 const log = createLogger('MessageUpdater');
 
@@ -98,11 +99,21 @@ export async function markViewOnceMessageViewed(
     );
   }
 
-  if (message.get('readStatus') !== ReadStatus.Viewed) {
+  const wasAlreadyViewed = message.get('readStatus') === ReadStatus.Viewed;
+  if (!wasAlreadyViewed) {
     message.set(markViewed(message.attributes));
   }
 
-  await eraseMessageContents(message, 'view-once-viewed');
+  if (shouldEraseViewOnceMedia('view-once-viewed')) {
+    await eraseMessageContents(message, 'view-once-viewed');
+  }
+
+  if (wasAlreadyViewed) {
+    log.info(
+      'markViewOnceMessageViewed: already viewed; retaining local media'
+    );
+    return;
+  }
 
   if (!fromSync) {
     const senderE164 = getSource(message.attributes);
