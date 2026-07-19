@@ -24,10 +24,12 @@
 ### Task 1: Central View-Once Retention Policy
 
 **Files:**
+
 - Create: `ts/util/viewOnceRetention.std.ts`
 - Create: `ts/test-node/util/viewOnceRetention_test.std.ts`
 
 **Interfaces:**
+
 - Produces: `shouldEraseViewOnceMedia(reason: ViewOnceEraseReason): boolean`.
 - Consumes: the three existing erase reason strings from `EraseMessageReasonType`.
 
@@ -85,10 +87,12 @@ git commit -m "Add view-once retention policy"
 ### Task 2: Preserve Received Media and Avoid Duplicate Open Events
 
 **Files:**
+
 - Create: `ts/test-electron/services/MessageUpdater_test.preload.ts`
 - Modify: `ts/services/MessageUpdater.preload.ts:81-166`
 
 **Interfaces:**
+
 - Consumes: `shouldEraseViewOnceMedia('view-once-viewed')` from Task 1.
 - Preserves: `markViewOnceMessageViewed(message, { fromSync? }): Promise<void>`.
 
@@ -148,11 +152,13 @@ git commit -m "Preserve received view-once media"
 ### Task 3: Preserve Sent and Aged Media
 
 **Files:**
+
 - Modify: `ts/jobs/helpers/sendNormalMessage.preload.ts:482-484`
 - Modify: `ts/services/tapToViewMessagesDeletionService.preload.ts:146-148`
 - Modify: `ts/test-node/util/viewOnceRetention_test.std.ts`
 
 **Interfaces:**
+
 - Consumes: `shouldEraseViewOnceMedia('view-once-sent' | 'view-once-expired')` from Task 1.
 
 - [ ] **Step 1: Extend the policy test with explicit trigger coverage**
@@ -209,12 +215,14 @@ git commit -m "Preserve sent and aged view-once media"
 ### Task 4: Reopen Viewed and Outgoing Media in the Existing Lightbox
 
 **Files:**
+
 - Modify: `ts/components/conversation/Message.dom.tsx:2760-2820,3178-3240`
 - Modify: `ts/state/ducks/lightbox.preload.ts:180-270`
 - Modify: `ts/test-mock/helpers.node.ts:198-246`
 - Modify: `ts/test-mock/messaging/lightbox_test.node.ts`
 
 **Interfaces:**
+
 - Preserves: `showLightboxForViewOnceMedia(messageId: string)`.
 - Extends: mock `sendTextMessage` with optional `isViewOnce?: boolean` and maps it to `Proto.DataMessage.isViewOnce`.
 
@@ -272,9 +280,11 @@ git commit -m "Allow repeated view-once media playback"
 ### Task 5: Regression Verification, Build, and Transactional Installation
 
 **Files:**
+
 - Verify only; no source file is expected unless a failing check identifies a scoped defect.
 
 **Interfaces:**
+
 - Produces: installed `/Applications/Signal.app` with identifier `org.whispersystems.signal-desktop` and preserved profile data.
 
 - [ ] **Step 1: Run focused and broad verification**
