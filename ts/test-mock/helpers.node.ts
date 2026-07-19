@@ -205,6 +205,7 @@ export function sendTextMessage({
   sticker,
   preview,
   quote,
+  isViewOnce,
   desktop,
   timestamp = Date.now(),
 }: {
@@ -215,6 +216,7 @@ export function sendTextMessage({
   sticker?: Proto.DataMessage.Sticker.Params;
   preview?: Proto.Preview.Params;
   quote?: Proto.DataMessage.Quote.Params;
+  isViewOnce?: boolean;
   desktop: Device;
   timestamp?: number;
 }): Promise<void> {
@@ -233,6 +235,7 @@ export function sendTextMessage({
         sticker: sticker ?? null,
         preview: preview == null ? null : [preview],
         quote: quote ?? null,
+        isViewOnce: isViewOnce ?? false,
         timestamp: BigInt(timestamp),
         groupV2: groupInfo
           ? {

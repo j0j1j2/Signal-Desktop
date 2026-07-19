@@ -1136,8 +1136,7 @@ export class Message extends PureComponent<Props, State> {
             badge={undefined}
             className={classNames(
               'module-message__read-by__avatar',
-              !contact.hasRead &&
-                'module-message__read-by__avatar--delivered'
+              !contact.hasRead && 'module-message__read-by__avatar--delivered'
             )}
             color={contact.color}
             conversationType="direct"
@@ -2555,34 +2554,36 @@ export class Message extends PureComponent<Props, State> {
             </span>
           </>
         )}
-        {messageStatusContents == null && !showOriginalOnDelete && text != null && (
-          <MessageBodyReadMore
-            bodyRanges={bodyRanges}
-            direction={direction}
-            disableLinks={!this.#areLinksEnabled()}
-            displayLimit={displayLimit}
-            i18n={i18n}
-            id={id}
-            isSpoilerExpanded={isSpoilerExpanded || {}}
-            kickOffBodyDownload={() => {
-              if (!textAttachment) {
-                return;
-              }
-              if (isDownloaded(textAttachment)) {
-                return;
-              }
-              kickOffAttachmentDownload({
-                messageId: id,
-              });
-            }}
-            messageExpanded={messageExpanded}
-            showConversation={showConversation}
-            renderLocation={RenderLocation.Timeline}
-            onExpandSpoiler={data => showSpoiler(id, data)}
-            text={text}
-            textAttachment={textAttachment}
-          />
-        )}
+        {messageStatusContents == null &&
+          !showOriginalOnDelete &&
+          text != null && (
+            <MessageBodyReadMore
+              bodyRanges={bodyRanges}
+              direction={direction}
+              disableLinks={!this.#areLinksEnabled()}
+              displayLimit={displayLimit}
+              i18n={i18n}
+              id={id}
+              isSpoilerExpanded={isSpoilerExpanded || {}}
+              kickOffBodyDownload={() => {
+                if (!textAttachment) {
+                  return;
+                }
+                if (isDownloaded(textAttachment)) {
+                  return;
+                }
+                kickOffAttachmentDownload({
+                  messageId: id,
+                });
+              }}
+              messageExpanded={messageExpanded}
+              showConversation={showConversation}
+              renderLocation={RenderLocation.Timeline}
+              onExpandSpoiler={data => showSpoiler(id, data)}
+              text={text}
+              textAttachment={textAttachment}
+            />
+          )}
         {expirationDeprecated && !deletedForEveryone && (
           <span className="module-message__deprecated-suffix">
             {text != null ? ' ' : null}
@@ -2763,13 +2764,10 @@ export class Message extends PureComponent<Props, State> {
     const isIncoming = direction === 'incoming';
 
     let state = 'ready';
-    let isDisabled = false;
     if (!isIncoming) {
       state = 'outgoing';
-      isDisabled = true;
     } else if (readStatus === ReadStatus.Viewed) {
       state = 'viewed';
-      isDisabled = true;
     } else if (isTapToViewError || isTapToViewExpired) {
       throw new Error(
         'renderTapToViewIcon: This state is handled in renderSimpleAttachmentNotAvailable'
@@ -2783,9 +2781,6 @@ export class Message extends PureComponent<Props, State> {
             'AttachmentStatusIcon__circle-icon-container',
             isIncoming
               ? 'AttachmentStatusIcon__circle-icon-container--incoming'
-              : null,
-            isDisabled
-              ? 'AttachmentStatusIcon__circle-icon-container--disabled'
               : null
           )}
         >
@@ -3180,7 +3175,6 @@ export class Message extends PureComponent<Props, State> {
       attachments,
       cancelAttachmentDownload,
       contact,
-      direction,
       giftBadge,
       id,
       isTapToView,
@@ -3189,9 +3183,6 @@ export class Message extends PureComponent<Props, State> {
       kickOffAttachmentDownload,
       openGiftBadge,
       pushPanelForConversation,
-      readStatus,
-      showExpiredIncomingTapToViewToast,
-      showExpiredOutgoingTapToViewToast,
       showLightbox,
       showLightboxForViewOnceMedia,
       startConversation,
@@ -3208,15 +3199,6 @@ export class Message extends PureComponent<Props, State> {
     if (isTapToView) {
       event.preventDefault();
       event.stopPropagation();
-
-      if (direction === 'outgoing') {
-        showExpiredOutgoingTapToViewToast();
-        return;
-      }
-      if (readStatus === ReadStatus.Viewed) {
-        showExpiredIncomingTapToViewToast();
-        return;
-      }
 
       if (isTapToViewError || isTapToViewExpired) {
         // The only interactive element is the Learn More button

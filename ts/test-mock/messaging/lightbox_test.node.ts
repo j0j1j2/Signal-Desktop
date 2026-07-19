@@ -15,8 +15,10 @@ import { Bootstrap } from '../bootstrap.node.ts';
 import {
   getMessageInTimelineByTimestamp,
   getTimelineMessageWithText,
+  composerAttachFiles,
   sendMessageWithAttachments,
   sendTextMessage,
+  waitForNonProfileKeyUpdateMessage,
 } from '../helpers.node.ts';
 import * as durations from '../../util/durations/index.std.ts';
 import { strictAssert } from '../../util/assert.std.ts';
@@ -181,5 +183,92 @@ describe('lightbox', function (this: Mocha.Suite) {
       // oxlint-disable-next-line no-await-in-loop
       await expectLightboxImage(attachment);
     }
+  });
+
+  it('reopens received view-once media', async () => {
+    const page = await app.getWindow();
+    await page.getByTestId(pinned.device.aci).click();
+
+    const fixture = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'fixtures',
+      'cat-screenshot.png'
+    );
+    const {
+      attachments: [attachment],
+    } = await sendMessageWithAttachments(page, pinned, 'Attachment seed', [
+      fixture,
+    ]);
+    strictAssert(attachment, 'attachment exists');
+
+    const timestamp = bootstrap.getTimestamp();
+    await sendTextMessage({
+      from: pinned,
+      to: bootstrap.desktop,
+      desktop: bootstrap.desktop,
+      text: undefined,
+      attachments: [attachment],
+      isViewOnce: true,
+      timestamp,
+    });
+
+    const Message = getMessageInTimelineByTimestamp(page, timestamp);
+    const ViewOnceAttachment = Message.locator(
+      '.module-message__simple-attachment'
+    );
+    const Lightbox = page.locator('.Lightbox');
+    await Message.locator(
+      '.module-message__tap-to-view__icon--ready'
+    ).waitFor();
+
+    await ViewOnceAttachment.click();
+    await Lightbox.waitFor();
+    await Lightbox.getByRole('button', { name: 'Close' }).click();
+    await expect(Lightbox).toBeHidden();
+
+    await ViewOnceAttachment.click();
+    await expect(Lightbox).toBeVisible();
+  });
+
+  it('opens sent view-once media repeatedly', async () => {
+    const page = await app.getWindow();
+    await page.getByTestId(pinned.device.aci).click();
+
+    const fixture = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'fixtures',
+      'cat-screenshot.png'
+    );
+    await composerAttachFiles(page, [fixture]);
+    await page.getByRole('button', { name: 'View once' }).click();
+
+    const sentMessage = waitForNonProfileKeyUpdateMessage(pinned);
+    await page.getByRole('button', { name: 'Send Message' }).click();
+    const { dataMessage } = await sentMessage;
+    strictAssert(dataMessage.timestamp, 'timestamp exists');
+
+    const Message = getMessageInTimelineByTimestamp(
+      page,
+      Number(dataMessage.timestamp)
+    );
+    const ViewOnceAttachment = Message.locator(
+      '.module-message__simple-attachment'
+    );
+    const Lightbox = page.locator('.Lightbox');
+    await Message.waitFor();
+
+    await ViewOnceAttachment.click();
+    await Lightbox.waitFor();
+    await Lightbox.getByRole('button', { name: 'Close' }).click();
+    await expect(Lightbox).toBeHidden();
+
+    await ViewOnceAttachment.click();
+    await expect(Lightbox).toBeVisible();
   });
 });

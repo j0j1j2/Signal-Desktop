@@ -54,6 +54,7 @@ import { AttachmentDownloadUrgency } from '../../types/AttachmentDownload.std.ts
 import { queueAttachmentDownloadsAndMaybeSaveMessage } from '../../util/queueAttachmentDownloads.preload.ts';
 import { getMessageIdForLogging } from '../../util/idForLogging.preload.ts';
 import { markViewOnceMessageViewed } from '../../services/MessageUpdater.preload.ts';
+import { isIncoming } from '../../messages/helpers.std.ts';
 
 const log = createLogger('lightbox');
 
@@ -214,7 +215,9 @@ function showLightboxForViewOnceMedia(
       disposition: AttachmentDisposition.Temporary,
     });
 
-    await markViewOnceMessageViewed(message);
+    if (isIncoming(message.attributes)) {
+      await markViewOnceMessageViewed(message);
+    }
 
     const media = [
       {
