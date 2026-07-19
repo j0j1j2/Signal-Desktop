@@ -61,6 +61,7 @@ import {
 } from '../util/handleMessageSend.preload.ts';
 import type { DurationInSeconds } from '../util/durations/index.std.ts';
 import { SignalService as Proto } from '../protobuf/index.std.ts';
+import { recordPacket } from '../util/packetLog.std.ts';
 import { createLogger } from '../logging/log.std.ts';
 import type { EmbeddedContactWithUploadedAvatar } from '../types/EmbeddedContact.std.ts';
 import {
@@ -1323,6 +1324,8 @@ export class MessageSender {
     timestamp: number;
     urgent: boolean;
   }>): Promise<void> {
+    // Custom: record the outgoing Content for the packet-log viewer.
+    recordPacket('out', proto);
     try {
       if (accountManager.areKeysOutOfDate(ServiceIdKind.ACI)) {
         log.warn(

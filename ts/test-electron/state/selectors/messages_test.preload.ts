@@ -368,7 +368,7 @@ describe('state/selectors/messages', () => {
 
     // NOTE: This is missing a test for mandatory profile sharing.
 
-    it('returns false if the message was deleted for everyone', () => {
+    it('returns true if the message was deleted for everyone', () => {
       const message = {
         conversationId: 'fake-conversation-id',
         type: 'incoming' as const,
@@ -376,7 +376,7 @@ describe('state/selectors/messages', () => {
       };
       const getConversationById = () => defaultConversation;
 
-      assert.isFalse(canReply(message, ourConversationId, getConversationById));
+      assert.isTrue(canReply(message, ourConversationId, getConversationById));
     });
 
     it('returns false for outgoing messages that have not been sent', () => {

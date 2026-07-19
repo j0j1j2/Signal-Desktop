@@ -2284,7 +2284,8 @@ function canReplyOrReact(
     | 'type'
   >,
   ourConversationId: string | undefined,
-  conversation: undefined | Readonly<ConversationType>
+  conversation: undefined | Readonly<ConversationType>,
+  options: Readonly<{ allowDeletedForEveryone?: boolean }> = {}
 ): boolean {
   const { deletedForEveryone, sendStateByConversationId } = message;
 
@@ -2315,7 +2316,7 @@ function canReplyOrReact(
     return false;
   }
 
-  if (deletedForEveryone) {
+  if (deletedForEveryone && !options.allowDeletedForEveryone) {
     return false;
   }
 
@@ -2375,7 +2376,9 @@ export function canReply(
   ) {
     return false;
   }
-  return canReplyOrReact(message, ourConversationId, conversation);
+  return canReplyOrReact(message, ourConversationId, conversation, {
+    allowDeletedForEveryone: true,
+  });
 }
 
 export function canReact(

@@ -38,6 +38,7 @@ export async function makeQuote(
     attachments,
     bodyRanges,
     id: messageId,
+    originalBodyRanges,
     payment,
     preview,
     sticker,
@@ -51,7 +52,9 @@ export async function makeQuote(
       ? [{ contentType: IMAGE_JPEG }]
       : await getQuoteAttachment(attachments, preview, sticker),
     payment,
-    bodyRanges,
+    bodyRanges: quotedMessage.deletedForEveryone
+      ? originalBodyRanges
+      : bodyRanges,
     id: quoteId,
     isViewOnce: isTapToView(quotedMessage),
     isGiftBadge: isGiftBadge(quotedMessage),

@@ -26,7 +26,20 @@ export function getQuoteBodyText({
     }
   }
 
-  const { body, contact: embeddedContact, poll } = messageAttributes;
+  const {
+    body,
+    contact: embeddedContact,
+    deletedForEveryone,
+    originalBody,
+    poll,
+  } = messageAttributes;
+
+  if (deletedForEveryone && originalBody) {
+    return originalBody;
+  }
+  if (deletedForEveryone) {
+    return i18n('icu:message--deletedForEveryone--deletedSuffix');
+  }
   const embeddedContactName =
     embeddedContact && embeddedContact.length > 0
       ? // oxlint-disable-next-line typescript/no-non-null-assertion

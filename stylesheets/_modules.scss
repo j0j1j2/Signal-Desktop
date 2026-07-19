@@ -1205,6 +1205,99 @@ $message-padding-horizontal: 12px;
   opacity: 0.7;
 }
 
+// Custom (research/debug): packet log viewer (uses .ProtoSend modal chrome).
+.PacketLog {
+  // Compound with .ProtoSend__panel so this wins its width (same specificity,
+  // but .ProtoSend rules appear later in the file).
+  &__panel.ProtoSend__panel {
+    width: min(1280px, 96vw);
+    max-width: 96vw;
+  }
+
+  &__body {
+    display: flex;
+    gap: 10px;
+    height: min(640px, 74vh);
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    width: 320px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid
+      light-dark(variables.$color-gray-15, variables.$color-gray-60);
+  }
+
+  &__empty {
+    @include mixins.font-caption;
+    padding: 12px;
+    color: light-dark(variables.$color-gray-60, variables.$color-gray-25);
+  }
+
+  &__row {
+    @include mixins.button-reset;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-block: 5px;
+    padding-inline: 8px;
+    font-size: 12px;
+    text-align: start;
+    border-bottom: 1px solid
+      light-dark(variables.$color-gray-05, variables.$color-gray-75);
+
+    &:hover {
+      background: light-dark(
+        variables.$color-gray-02,
+        variables.$color-gray-75
+      );
+    }
+
+    &--selected {
+      background: light-dark(
+        variables.$color-gray-05,
+        variables.$color-gray-65
+      );
+    }
+  }
+
+  &__dir {
+    flex-shrink: 0;
+    font-weight: 600;
+
+    &--in {
+      color: variables.$color-accent-green;
+    }
+
+    &--out {
+      color: variables.$color-accent-blue;
+    }
+  }
+
+  &__type {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__time {
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  // Higher specificity so it beats .ProtoSend__textarea's fixed width/height.
+  &__body &__detail {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    height: 100%;
+  }
+}
+
 // Custom (research/debug): raw protobuf send modal.
 .ProtoSend {
   &__overlay {
@@ -1408,7 +1501,10 @@ $message-padding-horizontal: 12px;
   &__slider {
     height: 3px;
     border-radius: 2px;
-    background-color: light-dark(rgba(0, 0, 0, 0.28), rgba(255, 255, 255, 0.35));
+    background-color: light-dark(
+      rgba(0, 0, 0, 0.28),
+      rgba(255, 255, 255, 0.35)
+    );
 
     &__handle {
       width: 10px;
@@ -1443,7 +1539,8 @@ $message-padding-horizontal: 12px;
 
   &__avatar {
     margin-inline-start: -6px;
-    box-shadow: 0 0 0 2px light-dark(variables.$color-white, variables.$color-gray-80);
+    box-shadow: 0 0 0 2px
+      light-dark(variables.$color-white, variables.$color-gray-80);
     border-radius: 50%;
 
     &:first-child {

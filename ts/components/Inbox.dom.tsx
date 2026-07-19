@@ -7,6 +7,7 @@ import { TitlebarDragArea } from './TitlebarDragArea.dom.tsx';
 import { OpacitySlider } from './OpacitySlider.dom.tsx';
 import { ProtoSendModal } from './ProtoSendModal.dom.tsx';
 import { RawMessageModal } from './RawMessageModal.dom.tsx';
+import { PacketLogModal } from './PacketLogModal.dom.tsx';
 
 export type PropsType = {
   isCustomizingPreferredReactions: boolean;
@@ -51,6 +52,7 @@ export function Inbox({
         <OpacitySlider />
         <ProtoSendModal />
         <RawMessageModal />
+        <PacketLogModal />
       </div>
       {activeModal}
     </>

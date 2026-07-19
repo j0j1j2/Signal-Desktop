@@ -3,6 +3,7 @@
 
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { packetReplacer } from '../util/packetLog.std.ts';
 
 // Custom (research/debug): a viewer that shows the decoded contents of a
 // message (its stored attributes = the parsed DataMessage) as JSON. Opened from
@@ -10,27 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 function formatMessage(data: unknown): string {
   try {
-    return JSON.stringify(
-      data,
-      (_key, value) => {
-        if (typeof value === 'bigint') {
-          return value.toString();
-        }
-        if (value instanceof Uint8Array) {
-          return `<bytes:${value.byteLength}>`;
-        }
-        if (
-          value != null &&
-          typeof value === 'object' &&
-          (value as { type?: unknown }).type === 'Buffer' &&
-          Array.isArray((value as { data?: unknown }).data)
-        ) {
-          return `<bytes:${(value as { data: Array<unknown> }).data.length}>`;
-        }
-        return value;
-      },
-      2
-    );
+    return JSON.stringify(data, packetReplacer, 2);
   } catch (error) {
     return `Could not serialize message: ${String(error)}`;
   }
@@ -69,6 +50,7 @@ export function RawMessageModal(): JSX.Element | null {
       <div className="ProtoSend__panel">
         <div className="ProtoSend__title">Raw message · decoded proto</div>
         <textarea
+          aria-label="Decoded raw message"
           className="ProtoSend__textarea"
           style={{ height: 380 }}
           readOnly

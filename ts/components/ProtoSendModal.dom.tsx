@@ -25,7 +25,9 @@ type TargetType = {
 
 // Template presets for common DataMessage shapes. `aci` is the recipient's
 // ACI (auto-filled for 1:1 conversations) used to prefill author/target fields.
-function buildPresets(aci: string): ReadonlyArray<{ label: string; value: string }> {
+function buildPresets(
+  aci: string
+): ReadonlyArray<{ label: string; value: string }> {
   const now = Date.now();
   const author = aci || '<recipient-aci-uuid>';
   return [
@@ -45,6 +47,17 @@ function buildPresets(aci: string): ReadonlyArray<{ label: string; value: string
     "text": "original preview text",
     "type": 0
   }
+}`,
+    },
+    {
+      label: 'Mention',
+      // \\uFFFC (object replacement char) marks the mention spot in the body;
+      // the bodyRange (start/length in UTF-16 units) points at it.
+      value: `{
+  "body": "hey \\uFFFC",
+  "bodyRanges": [
+    { "start": 4, "length": 1, "mentionAci": "${author}" }
+  ]
 }`,
     },
     {
@@ -131,9 +144,8 @@ export function ProtoSendModal(): JSX.Element | null {
         setOpen(false);
       }
     };
-    (
-      window as unknown as { openRawProtoSend?: () => void }
-    ).openRawProtoSend = openModal;
+    (window as unknown as { openRawProtoSend?: () => void }).openRawProtoSend =
+      openModal;
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [openModal]);

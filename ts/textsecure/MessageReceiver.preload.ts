@@ -42,6 +42,7 @@ import { assertDev, strictAssert } from '../util/assert.std.ts';
 import type { BatcherType } from '../util/batcher.std.ts';
 import { createBatcher } from '../util/batcher.std.ts';
 import { drop } from '../util/drop.std.ts';
+import { recordPacket } from '../util/packetLog.std.ts';
 import { dropNull } from '../util/dropNull.std.ts';
 import { parseIntOrThrow } from '../util/parseIntOrThrow.std.ts';
 import { clearTimeoutIfNecessary } from '../util/clearTimeoutIfNecessary.std.ts';
@@ -1453,6 +1454,8 @@ export default class MessageReceiver
     let inProgressMessageType = '';
     try {
       const content = Proto.Content.decode(plaintext);
+      // Custom: record the incoming Content for the packet-log viewer.
+      recordPacket('in', content);
       if (
         !wasEncrypted &&
         Bytes.isEmpty(content.content?.decryptionErrorMessage)
