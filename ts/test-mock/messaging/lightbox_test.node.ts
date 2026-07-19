@@ -230,7 +230,15 @@ describe('lightbox', function (this: Mocha.Suite) {
     await expect(Lightbox).toBeHidden();
 
     await ViewOnceAttachment.click();
-    await expect(Lightbox).toBeVisible();
+    assert.ok(
+      attachment.attachmentIdentifier?.cdnKey != null,
+      'Must have cdnKey'
+    );
+    await expect(
+      Lightbox.locator('.Lightbox__zoomable-container').getByTestId(
+        attachment.attachmentIdentifier.cdnKey
+      )
+    ).toBeVisible();
   });
 
   it('opens sent view-once media repeatedly', async () => {

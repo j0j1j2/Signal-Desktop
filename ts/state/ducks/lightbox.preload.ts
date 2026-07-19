@@ -55,6 +55,7 @@ import { queueAttachmentDownloadsAndMaybeSaveMessage } from '../../util/queueAtt
 import { getMessageIdForLogging } from '../../util/idForLogging.preload.ts';
 import { markViewOnceMessageViewed } from '../../services/MessageUpdater.preload.ts';
 import { isIncoming } from '../../messages/helpers.std.ts';
+import { isViewOnceMediaLocallyAvailable } from '../../util/viewOnceRetention.std.ts';
 
 const log = createLogger('lightbox');
 
@@ -187,14 +188,14 @@ function showLightboxForViewOnceMedia(
       );
     }
 
-    if (message.get('isErased')) {
-      throw new Error(
-        `showLightboxForViewOnceMedia: Message ${getMessageIdForLogging(message.attributes)} is already erased`
-      );
-    }
-
     const firstAttachment = (message.get('attachments') || [])[0];
-    if (!firstAttachment || !firstAttachment.path) {
+    if (
+      !firstAttachment ||
+      !isViewOnceMediaLocallyAvailable({
+        attachmentPath: firstAttachment.path,
+        isErased: Boolean(message.get('isErased')),
+      })
+    ) {
       throw new Error(
         `showLightboxForViewOnceMedia: Message ${getMessageIdForLogging(message.attributes)} had no first attachment with path`
       );

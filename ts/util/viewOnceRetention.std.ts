@@ -14,3 +14,26 @@ export function shouldEraseViewOnceMedia(
   // Custom: this private client retains view-once media locally.
   return false;
 }
+
+export function shouldBlockViewOnceOpen({
+  isError,
+  isExpired,
+  isViewed,
+}: Readonly<{
+  isError: boolean;
+  isExpired: boolean;
+  isViewed: boolean;
+}>): boolean {
+  return !isViewed && (isError || isExpired);
+}
+
+export function isViewOnceMediaLocallyAvailable(
+  state: Readonly<{
+    attachmentPath: string | undefined;
+    isErased: boolean;
+  }>
+): boolean {
+  // Retained attachment data is authoritative for this private client. Older
+  // messages whose files were actually erased have no attachment path.
+  return Boolean(state.attachmentPath);
+}

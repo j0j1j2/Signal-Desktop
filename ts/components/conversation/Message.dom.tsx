@@ -124,6 +124,7 @@ import type { MemberLabelType } from '../../types/GroupMemberLabels.std.ts';
 import type { ContactModalStateType } from '../../types/globalModals.std.ts';
 import { tw } from '../../axo/tw.dom.tsx';
 import { Emoji } from '../../axo/emoji.std.ts';
+import { shouldBlockViewOnceOpen } from '../../util/viewOnceRetention.std.ts';
 
 const { drop, take, unescape } = lodash;
 
@@ -3183,6 +3184,7 @@ export class Message extends PureComponent<Props, State> {
       kickOffAttachmentDownload,
       openGiftBadge,
       pushPanelForConversation,
+      readStatus,
       showLightbox,
       showLightboxForViewOnceMedia,
       startConversation,
@@ -3200,7 +3202,13 @@ export class Message extends PureComponent<Props, State> {
       event.preventDefault();
       event.stopPropagation();
 
-      if (isTapToViewError || isTapToViewExpired) {
+      if (
+        shouldBlockViewOnceOpen({
+          isError: Boolean(isTapToViewError),
+          isExpired: Boolean(isTapToViewExpired),
+          isViewed: readStatus === ReadStatus.Viewed,
+        })
+      ) {
         // The only interactive element is the Learn More button
         return;
       }
