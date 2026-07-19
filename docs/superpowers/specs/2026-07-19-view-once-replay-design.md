@@ -164,3 +164,31 @@ The implementation will retain Signal's protobuf fields, receipt behavior, and
 linked-device synchronization format. It will change only this client's local
 retention policy. Custom code will be labeled narrowly so future upstream
 merges can identify the intentional divergence.
+
+## Local Installation
+
+After implementation and verification, the new Apple Silicon application will
+replace the existing `/Applications/Signal.app` installation. Installation
+must preserve the existing user profile under
+`~/Library/Application Support/Signal` and must not modify or remove Signal's
+Keychain entries.
+
+The replacement procedure is transactional:
+
+1. Build and verify `release/mac-arm64/Signal.app` with the production bundle
+   identifier `org.whispersystems.signal-desktop`.
+2. Verify the application bundle's ad-hoc signature and packaged architecture.
+3. Ask the running Signal application to quit and wait for all of its processes
+   to exit.
+4. Move the installed application bundle to a temporary rollback path.
+5. Copy the new bundle to `/Applications/Signal.app` and verify the copied
+   bundle.
+6. Launch the replacement and confirm that it starts with the existing local
+   profile.
+7. Remove the temporary application backup only after successful launch
+   verification.
+
+If copying, signature verification, launch, or profile loading fails, the
+installer must remove the failed replacement and restore the previous app
+bundle. The profile directory is not part of the replacement operation and is
+never deleted during rollback.
