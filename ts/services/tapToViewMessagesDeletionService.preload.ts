@@ -13,6 +13,7 @@ import { eraseMessageContents } from '../util/cleanup.preload.ts';
 import { drop } from '../util/drop.std.ts';
 import { MessageModel } from '../models/messages.preload.ts';
 import { createLogger } from '../logging/log.std.ts';
+import { shouldEraseViewOnceMedia } from '../util/viewOnceRetention.std.ts';
 
 const { debounce } = lodash;
 
@@ -132,7 +133,11 @@ class TapToViewMessagesDeletionService {
   }
 
   #shouldRun(): boolean {
-    return !this.#isPaused && !window.SignalContext.isTestOrMockEnvironment();
+    return (
+      shouldEraseViewOnceMedia('view-once-expired') &&
+      !this.#isPaused &&
+      !window.SignalContext.isTestOrMockEnvironment()
+    );
   }
 }
 

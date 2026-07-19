@@ -80,6 +80,7 @@ import { send, sendSyncMessageOnly } from '../../messages/send.preload.ts';
 import type { SignalService } from '../../protobuf/index.std.ts';
 import { eraseMessageContents } from '../../util/cleanup.preload.ts';
 import { shouldSendToDirectConversation } from './shouldSendToConversation.preload.ts';
+import { shouldEraseViewOnceMedia } from '../../util/viewOnceRetention.std.ts';
 
 const { isNumber } = lodash;
 
@@ -479,7 +480,7 @@ export async function sendNormalMessage(
       throw new Error('message did not fully send');
     }
 
-    if (isViewOnce) {
+    if (isViewOnce && shouldEraseViewOnceMedia('view-once-sent')) {
       await eraseMessageContents(message, 'view-once-sent');
     }
   } catch (thrownError: unknown) {

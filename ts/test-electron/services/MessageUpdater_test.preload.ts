@@ -71,11 +71,10 @@ describe('MessageUpdater view-once retention', () => {
   it('queues first-open events only once across repeated local opens', async () => {
     const now = Date.now();
     const sourceAci = generateAci();
-    const conversation =
-      await window.ConversationController.getOrCreateAndWait(
-        sourceAci,
-        'private'
-      );
+    const conversation = await window.ConversationController.getOrCreateAndWait(
+      sourceAci,
+      'private'
+    );
     const message = window.MessageCache.register(
       new MessageModel({
         id: v7(),
