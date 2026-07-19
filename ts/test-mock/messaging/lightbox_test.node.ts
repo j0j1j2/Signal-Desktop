@@ -226,6 +226,10 @@ describe('lightbox', function (this: Mocha.Suite) {
 
     await ViewOnceAttachment.click();
     await Lightbox.waitFor();
+    await expect(Lightbox.getByRole('button', { name: 'Save' })).toBeVisible();
+    await expect(Lightbox.getByRole('button', { name: 'Forward' })).toHaveCount(
+      0
+    );
     await Lightbox.getByRole('button', { name: 'Close' }).click();
     await expect(Lightbox).toBeHidden();
 
@@ -273,6 +277,10 @@ describe('lightbox', function (this: Mocha.Suite) {
 
     await ViewOnceAttachment.click();
     await Lightbox.waitFor();
+    await expect(Lightbox.getByRole('button', { name: 'Save' })).toBeVisible();
+    await expect(Lightbox.getByRole('button', { name: 'Forward' })).toHaveCount(
+      0
+    );
     await Lightbox.getByRole('button', { name: 'Close' }).click();
     await expect(Lightbox).toBeHidden();
 

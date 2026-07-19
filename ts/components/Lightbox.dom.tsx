@@ -238,10 +238,6 @@ export function Lightbox({
 
   const handleSave = useCallback(
     (event: KeyboardEvent | ReactMouseEvent<HTMLButtonElement>) => {
-      if (isViewOnce) {
-        return;
-      }
-
       event.stopPropagation();
       event.preventDefault();
 
@@ -251,7 +247,7 @@ export function Lightbox({
 
       saveAttachment(attachmentToSave, message.sentAt, index + 1);
     },
-    [isViewOnce, media, saveAttachment, selectedIndex]
+    [media, saveAttachment, selectedIndex]
   );
 
   const handleForward = (event: ReactMouseEvent<HTMLButtonElement>) => {
@@ -753,14 +749,12 @@ export function Lightbox({
                         type="button"
                       />
                     ) : null}
-                    {!isViewOnce ? (
-                      <button
-                        aria-label={i18n('icu:save')}
-                        className="Lightbox__button Lightbox__button--save"
-                        onClick={handleSave}
-                        type="button"
-                      />
-                    ) : null}
+                    <button
+                      aria-label={i18n('icu:save')}
+                      className="Lightbox__button Lightbox__button--save"
+                      onClick={handleSave}
+                      type="button"
+                    />
                     <button
                       aria-label={i18n('icu:close')}
                       className="Lightbox__button Lightbox__button--close"
