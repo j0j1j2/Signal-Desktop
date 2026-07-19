@@ -153,7 +153,16 @@ implementation commit or a later verification-only commit.
 - [ ] **Step 3: Build the native arm64 production application**
 
 ```bash
-pnpm build -- --arm64
+pnpm run generate
+pnpm run build:rolldown:prod
+SKIP_SIGNING_SCRIPT=1 \
+CSC_IDENTITY_AUTO_DISCOVERY=false \
+DISABLE_INSPECT_FUSE=on \
+pnpm run build:release --arm64 \
+  --config.mac.target=dir \
+  --config.mac.identity=null \
+  --publish=never
+codesign --force --deep --sign dimmm-dev release/mac-arm64/Signal.app
 ```
 
 Expected: exit code 0 and `release/mac-arm64/Signal.app` exists.
@@ -174,8 +183,8 @@ SHA-256 is printed.
 ```bash
 osascript -e 'tell application "Signal" to quit' || true
 while pgrep -x Signal >/dev/null; do sleep 1; done
-rm -rf /Applications/Signal.app.previous
-if test -d /Applications/Signal.app; then mv /Applications/Signal.app /Applications/Signal.app.previous; fi
+backup="/Applications/Signal.app.previous-$(date +%Y%m%d-%H%M%S)"
+if test -d /Applications/Signal.app; then mv /Applications/Signal.app "$backup"; fi
 ditto release/mac-arm64/Signal.app /Applications/Signal.app
 ```
 
@@ -197,11 +206,11 @@ mdls -name kMDItemVersion /Applications/Signal.app
 Expected: codesign verification passes, built and installed app.asar hashes
 match, Signal has a running PID, and the installed version is printed.
 
-- [ ] **Step 7: Remove the previous bundle after successful launch**
+- [ ] **Step 7: Archive the previous bundle after successful launch**
 
 ```bash
-rm -rf /Applications/Signal.app.previous
+mv "$backup" "$HOME/.Trash/$(basename "$backup")"
 git status --porcelain
 ```
 
-Expected: the previous bundle is removed and the repository remains clean.
+Expected: the previous bundle is moved to Trash and the repository remains clean.
