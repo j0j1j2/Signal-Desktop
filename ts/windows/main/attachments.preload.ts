@@ -186,7 +186,7 @@ export const createDoesExist = (
   };
 };
 
-const showSaveDialog = (
+export const showSaveDialog = (
   defaultPath: string
 ): Promise<{
   canceled: boolean;

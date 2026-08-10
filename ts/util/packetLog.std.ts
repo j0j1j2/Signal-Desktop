@@ -6,6 +6,8 @@
 // inspected in the packet-log viewer. Wire bytes are never persisted; this only
 // keeps a formatted snapshot in memory for the current session.
 
+import { SignalService as Proto } from '../protobuf/index.std.ts';
+
 export type PacketDirection = 'in' | 'out';
 
 export type PacketEntry = Readonly<{
@@ -13,6 +15,28 @@ export type PacketEntry = Readonly<{
   at: number;
   type: string;
   json: string;
+}>;
+
+export type PacketEnvelope = Readonly<{
+  id?: string;
+  type?: number;
+  source?: string;
+  sourceServiceId?: string;
+  sourceDevice?: number;
+  destinationServiceId?: string;
+  updatedPni?: string;
+  timestamp?: number;
+  serverGuid?: string;
+  serverTimestamp?: number;
+  receivedAtCounter?: number;
+  receivedAtDate?: number;
+  messageAgeSec?: number;
+  groupId?: string;
+  urgent?: boolean;
+  story?: boolean;
+  unidentifiedDeliveryReceived?: boolean;
+  contentHint?: number;
+  reportingToken?: Uint8Array<ArrayBuffer>;
 }>;
 
 const MAX_PACKETS = 500;
@@ -90,16 +114,71 @@ function format(content: unknown): string {
   }
 }
 
+function snapshotEnvelope(envelope: PacketEnvelope): Record<string, unknown> {
+  const {
+    id,
+    type,
+    source,
+    sourceServiceId,
+    sourceDevice,
+    destinationServiceId,
+    updatedPni,
+    timestamp,
+    serverGuid,
+    serverTimestamp,
+    receivedAtCounter,
+    receivedAtDate,
+    messageAgeSec,
+    groupId,
+    urgent,
+    story,
+    unidentifiedDeliveryReceived,
+    contentHint,
+    reportingToken,
+  } = envelope;
+
+  return {
+    id,
+    type,
+    typeName: type == null ? undefined : Proto.Envelope.Type[type],
+    source,
+    sourceServiceId,
+    sourceDevice,
+    destinationServiceId,
+    updatedPni,
+    timestamp,
+    serverGuid,
+    serverTimestamp,
+    receivedAtCounter,
+    receivedAtDate,
+    messageAgeSec,
+    groupId,
+    urgent,
+    story,
+    unidentifiedDeliveryReceived,
+    contentHint,
+    reportingToken,
+  };
+}
+
 export function recordPacket(
   direction: PacketDirection,
-  content: unknown
+  content: unknown,
+  envelope?: PacketEnvelope
 ): void {
   try {
     packets.push({
       direction,
       at: Date.now(),
       type: deriveType(content),
-      json: format(content),
+      json: format(
+        envelope
+          ? {
+              envelope: snapshotEnvelope(envelope),
+              content,
+            }
+          : content
+      ),
     });
     if (packets.length > MAX_PACKETS) {
       packets.splice(0, packets.length - MAX_PACKETS);

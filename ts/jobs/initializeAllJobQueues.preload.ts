@@ -33,7 +33,14 @@ export function initializeAllJobQueues({
   reportSpamJobQueue.initialize({ server });
 
   // General conversation send queue
-  drop(conversationJobQueue.streamJobs());
+  drop(
+    (async () => {
+      if (process.env.SIGNAL_CLEAR_PENDING_DELETE_FOR_EVERYONE_JOBS === '1') {
+        await conversationJobQueue.cancelPendingDeleteForEveryoneJobs();
+      }
+      await conversationJobQueue.streamJobs();
+    })()
+  );
 
   // Group avatar download after backup import
   drop(groupAvatarJobQueue.streamJobs());

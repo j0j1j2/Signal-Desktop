@@ -392,6 +392,12 @@
   "icu:ConversationHeader__menu__selectMessages": {
     "messageformat": "메시지 선택"
   },
+  "icu:ConversationHeader__menu__deleteAllMessagesForEveryone": {
+    "messageformat": "내 모든 메시지를 모두에게 삭제"
+  },
+  "icu:ConversationHeader__menu__exportChat": {
+    "messageformat": "채팅 내보내기"
+  },
   "icu:ConversationHeader__MenuItem--Accept": {
     "messageformat": "수락"
   },
@@ -1253,6 +1259,12 @@
   "icu:ConversationHeader__DeleteConversationConfirmation__description-with-sync": {
     "messageformat": "이 대화의 모든 메시지가 모든 기기에서 삭제됩니다."
   },
+  "icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__title": {
+    "messageformat": "내 모든 메시지를 모두에게 삭제할까요?"
+  },
+  "icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__description": {
+    "messageformat": "이 대화에서 내가 보낸 각 메시지에 대해 별도의 모두에게 삭제 패킷을 전송 대기열에 추가합니다. 다른 사람이 보낸 메시지는 변경하지 않습니다. 상대방은 삭제 가능 기한이 지난 패킷을 거부할 수 있습니다."
+  },
   "icu:ConversationHeader__ContextMenu__LeaveGroupAction__title": {
     "messageformat": "그룹 나가기"
   },
@@ -1264,6 +1276,15 @@
   },
   "icu:ConversationHeader__LeaveGroupConfirmation__confirmButton": {
     "messageformat": "나가기"
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__title": {
+    "messageformat": "이 채팅을 내보낼까요?"
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__description": {
+    "messageformat": "이 기기에 현재 저장된 메시지가 암호화되지 않은 JSON 파일로 저장됩니다. 사라지는 메시지와 1회 보기 메시지 기록 및 안전한 첨부파일 메타데이터도 포함됩니다. 계정 식별자, 전화번호, 기기 번호, 키 및 로컬 파일 경로는 제외됩니다. 저장 및 공유에 주의하세요."
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__confirmButton": {
+    "messageformat": "내보내기"
   },
   "icu:ConversationHeader__CannotLeaveGroupBecauseYouAreLastAdminAlert__description": {
     "messageformat": "나가기 전에 이 그룹에 대한 새 관리자를 한 명 이상 선택해야 합니다."

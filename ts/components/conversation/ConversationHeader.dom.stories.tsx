@@ -71,7 +71,11 @@ const commonProps: PropsType = {
   onConversationBlock: action('onConversationBlock'),
   onConversationBlockAndReportSpam: action('onConversationBlockAndReportSpam'),
   onConversationDelete: action('onConversationDelete'),
+  onConversationDeleteAllForEveryone: action(
+    'onConversationDeleteAllForEveryone'
+  ),
   onConversationDeleteMessages: action('onConversationDeleteMessages'),
+  onConversationExport: action('onConversationExport'),
   onConversationDisappearingMessagesChange: action(
     'onConversationDisappearingMessagesChange'
   ),

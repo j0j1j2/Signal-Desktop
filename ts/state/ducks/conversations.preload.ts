@@ -138,6 +138,7 @@ import { viewSyncJobQueue } from '../../jobs/viewSyncJobQueue.preload.ts';
 import { ReadStatus } from '../../messages/MessageReadStatus.std.ts';
 import {
   isIncoming,
+  isOutgoing,
   isStory,
   processBodyRanges,
 } from '../selectors/message.preload.ts';
@@ -1179,6 +1180,7 @@ export const actions = {
   createGroup,
   deleteAvatarFromDisk,
   deleteConversation,
+  deleteAllOwnMessagesForEveryone,
   deleteMessages,
   deleteMessagesForEveryone,
   destroyMessages,
@@ -3552,6 +3554,163 @@ function setProfileUpdateError(
 export type PushPanelForConversationActionType = ReadonlyDeep<
   (panel: PanelArgsType) => unknown
 >;
+
+const DELETE_ALL_FOR_EVERYONE_PAGE_SIZE = 100;
+const DELETE_ALL_FOR_EVERYONE_BATCH_SIZE = 5;
+
+async function queueOwnDeletesForEveryonePage(
+  messages: ReadonlyArray<MessageAttributesType>,
+  conversation: ConversationModel
+): Promise<{
+  queuedCount: number;
+  failedCount: number;
+}> {
+  const outgoingMessages = messages.filter(
+    message => isOutgoing(message) && !message.deletedForEveryone
+  );
+  let queuedCount = 0;
+  let failedCount = 0;
+  for (
+    let index = 0;
+    index < outgoingMessages.length;
+    index += DELETE_ALL_FOR_EVERYONE_BATCH_SIZE
+  ) {
+    const batch = outgoingMessages.slice(
+      index,
+      index + DELETE_ALL_FOR_EVERYONE_BATCH_SIZE
+    );
+    // Keep only a handful of database writes in flight while still enqueueing
+    // a large conversation at a practical speed.
+    // oxlint-disable-next-line no-await-in-loop
+    const results = await Promise.allSettled(
+      batch.map(message =>
+        sendDeleteForEveryoneMessage(conversation.attributes, {
+          forceSend: true,
+          id: message.id,
+          timestamp: getMessageSentTimestamp(message, { log }),
+        })
+      )
+    );
+
+    for (const [offset, result] of results.entries()) {
+      const message = batch[offset];
+      strictAssert(message, 'Delete-for-everyone batch result was misaligned');
+      if (result.status === 'fulfilled') {
+        queuedCount += 1;
+      } else {
+        failedCount += 1;
+        log.error(
+          'deleteAllOwnMessagesForEveryone: Failed to queue message',
+          getMessageIdForLogging(message),
+          Errors.toLogFormat(result.reason)
+        );
+      }
+    }
+  }
+
+  return { queuedCount, failedCount };
+}
+
+function deleteAllOwnMessagesForEveryone(
+  conversationId: string
+): ThunkAction<
+  void,
+  RootStateType,
+  unknown,
+  NoopActionType | ShowToastActionType
+> {
+  return async dispatch => {
+    const conversation = window.ConversationController.get(conversationId);
+    if (!conversation) {
+      log.error(
+        `deleteAllOwnMessagesForEveryone: Conversation ${conversationId} missing`
+      );
+      dispatch({
+        type: SHOW_TOAST,
+        payload: { toastType: ToastType.DeleteForEveryoneFailed },
+      });
+      return;
+    }
+
+    let cursor:
+      | Readonly<{ id: string; receivedAt: number; sentAt: number }>
+      | undefined;
+    let queuedCount = 0;
+    let failedCount = 0;
+    let hasMore = true;
+
+    try {
+      const canceledCount =
+        await conversationJobQueue.cancelPendingDeleteForEveryoneJobs(
+          conversationId
+        );
+      log.info(
+        `deleteAllOwnMessagesForEveryone: canceled ${canceledCount} ` +
+          'previous delete-for-everyone jobs'
+      );
+
+      while (hasMore) {
+        // Read the complete conversation newest-first so messages that are
+        // still within recipients' deletion windows are sent before old ones.
+        // A large chat should not require all of its message models to be
+        // resident at the same time.
+        // oxlint-disable-next-line no-await-in-loop
+        const page = await DataReader.getOlderMessagesByConversation({
+          conversationId,
+          includeStoryReplies: !isGroup(conversation.attributes),
+          limit: DELETE_ALL_FOR_EVERYONE_PAGE_SIZE,
+          messageId: cursor?.id,
+          receivedAt: cursor?.receivedAt,
+          sentAt: cursor?.sentAt,
+          storyId: undefined,
+        });
+
+        if (page.length === 0) {
+          break;
+        }
+
+        // oxlint-disable-next-line no-await-in-loop
+        const pageResult = await queueOwnDeletesForEveryonePage(
+          page.toReversed(),
+          conversation
+        );
+        queuedCount += pageResult.queuedCount;
+        failedCount += pageResult.failedCount;
+
+        const oldestMessage = page.at(0);
+        if (!oldestMessage || page.length < DELETE_ALL_FOR_EVERYONE_PAGE_SIZE) {
+          hasMore = false;
+          continue;
+        }
+        cursor = {
+          id: oldestMessage.id,
+          receivedAt: oldestMessage.received_at,
+          sentAt: oldestMessage.sent_at,
+        };
+      }
+    } catch (error) {
+      failedCount += 1;
+      log.error(
+        'deleteAllOwnMessagesForEveryone: Failed while reading conversation',
+        Errors.toLogFormat(error)
+      );
+    }
+
+    log.info(
+      `deleteAllOwnMessagesForEveryone: queued=${queuedCount}, ` +
+        `failed=${failedCount} for ${conversationId}`
+    );
+
+    if (failedCount > 0 || queuedCount === 0) {
+      dispatch({
+        type: SHOW_TOAST,
+        payload: { toastType: ToastType.DeleteForEveryoneFailed },
+      });
+    } else {
+      dispatch(noopAction('deleteAllOwnMessagesForEveryone'));
+    }
+  };
+}
 
 function deleteMessagesForEveryone(
   messageIds: ReadonlyArray<string>

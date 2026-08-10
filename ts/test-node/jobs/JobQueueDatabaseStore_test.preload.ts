@@ -188,6 +188,29 @@ describe('JobQueueDatabaseStore', () => {
     });
   });
 
+  describe('getJobs', () => {
+    it('returns jobs from the requested database queue', async () => {
+      const jobs: Array<StoredJob> = [
+        {
+          id: 'delete-job',
+          timestamp: 1234,
+          queueType: 'conversation',
+          data: { type: 'DeleteForEveryone' },
+        },
+      ];
+      fakeDatabase.getJobsInQueue.withArgs('conversation').resolves(jobs);
+      const store = new JobQueueDatabaseStore(fakeDatabase);
+
+      const result = await store.getJobs('conversation');
+
+      assert.deepEqual(result, jobs);
+      sinon.assert.calledOnceWithExactly(
+        fakeDatabase.getJobsInQueue,
+        'conversation'
+      );
+    });
+  });
+
   describe('stream', () => {
     it('yields all values in the database, then all values inserted', async () => {
       const makeJob = (id: string, queueType: string) => ({

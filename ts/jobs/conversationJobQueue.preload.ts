@@ -455,6 +455,8 @@ type ConversationData = Readonly<
 >;
 
 class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
+  readonly #canceledDeleteForEveryoneJobIds = new Set<string>();
+
   readonly #perConversationData = new Map<
     string,
     ConversationData | undefined
@@ -491,6 +493,44 @@ class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
     }
 
     return super.add(data, insert);
+  }
+
+  public async cancelPendingDeleteForEveryoneJobs(
+    conversationId?: string
+  ): Promise<number> {
+    const storedJobs = await jobQueueDatabaseStore.getJobs('conversation');
+    const jobIds = storedJobs.flatMap(job => {
+      const parsed = conversationQueueJobDataSchema.safeParse(job.data);
+      if (
+        !parsed.success ||
+        parsed.data.type !== conversationQueueJobEnum.enum.DeleteForEveryone ||
+        parsed.data.isAdminDelete ||
+        (conversationId != null &&
+          parsed.data.conversationId !== conversationId)
+      ) {
+        return [];
+      }
+      return [job.id];
+    });
+
+    for (const jobId of jobIds) {
+      this.#canceledDeleteForEveryoneJobIds.add(jobId);
+    }
+
+    const DELETE_BATCH_SIZE = 100;
+    for (let index = 0; index < jobIds.length; index += DELETE_BATCH_SIZE) {
+      const batch = jobIds.slice(index, index + DELETE_BATCH_SIZE);
+      // oxlint-disable-next-line no-await-in-loop
+      await Promise.all(
+        batch.map(jobId => jobQueueDatabaseStore.delete(jobId))
+      );
+    }
+
+    globalLogger.warn(
+      `Canceled ${jobIds.length} pending non-admin delete-for-everyone jobs` +
+        (conversationId == null ? '' : ` for conversation ${conversationId}`)
+    );
+    return jobIds.length;
   }
 
   protected parseData(data: unknown): ConversationQueueJobData {
@@ -845,10 +885,20 @@ class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
   protected async run(
     {
       data,
+      id,
       timestamp,
-    }: Readonly<{ data: ConversationQueueJobData; timestamp: number }>,
+    }: Readonly<{
+      data: ConversationQueueJobData;
+      id: string;
+      timestamp: number;
+    }>,
     { attempt, log }: Readonly<{ attempt: number; log: LoggerType }>
   ): Promise<typeof JOB_STATUS.NEEDS_RETRY | undefined> {
+    if (this.#canceledDeleteForEveryoneJobIds.delete(id)) {
+      log.info('Skipping canceled delete-for-everyone job');
+      return undefined;
+    }
+
     const { type, conversationId } = data;
     const isFinalAttempt = attempt >= MAX_ATTEMPTS;
     const perConversationData = this.#perConversationData.get(conversationId);

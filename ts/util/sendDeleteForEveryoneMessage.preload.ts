@@ -30,11 +30,16 @@ const log = createLogger('sendDeleteForEveryoneMessage');
 export async function sendDeleteForEveryoneMessage(
   conversationAttributes: ConversationAttributesType,
   options: {
+    forceSend?: boolean;
     id: string;
     timestamp: number;
   }
 ): Promise<void> {
-  const { timestamp: targetTimestamp, id: messageId } = options;
+  const {
+    forceSend = false,
+    timestamp: targetTimestamp,
+    id: messageId,
+  } = options;
   const message = await getMessageById(messageId);
   if (!message) {
     throw new Error('sendDeleteForEveryoneMessage: Cannot find message!');
@@ -59,11 +64,18 @@ export async function sendDeleteForEveryoneMessage(
     isDeleterGroupAdmin: areWeAdmin(conversationAttributes),
   });
 
-  if (!result.ok) {
+  if (!result.ok && !forceSend) {
     throw new Error(`Cannot send DOE: ${result.reason}`);
   }
 
-  const { needsAdminDelete: isAdminDelete } = result;
+  // Custom: bulk conversation deletion is also a packet-research feature. It
+  // deliberately queues one packet per stored message even when this client
+  // knows that a recipient may reject it for age or permission reasons. Keep
+  // the normal single-message path strict; only callers opting into forceSend
+  // bypass the local eligibility check.
+  const isAdminDelete = result.ok
+    ? result.needsAdminDelete
+    : areWeAdmin(conversationAttributes) && !isOutgoing(message.attributes);
 
   message.set({
     deletedForEveryoneSendStatus: zipObject(

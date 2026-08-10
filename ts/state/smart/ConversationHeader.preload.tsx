@@ -52,6 +52,13 @@ import { SmartMiniPlayer } from './MiniPlayer.preload.tsx';
 import { SmartPinnedMessagesBar } from './PinnedMessagesBar.preload.tsx';
 import { getContactSpoofingWarningSelector } from '../selectors/timeline.preload.ts';
 import { useNavActions } from '../ducks/nav.std.ts';
+import { useToastActions } from '../ducks/toast.preload.ts';
+import { ToastType } from '../../types/Toast.dom.tsx';
+import { exportConversationToDisk } from '../../util/exportConversation.preload.ts';
+import { createLogger } from '../../logging/log.std.ts';
+import * as Errors from '../../types/errors.std.ts';
+
+const log = createLogger('SmartConversationHeader');
 
 function renderCollidingAvatars(
   props: SmartCollidingAvatarsProps
@@ -135,6 +142,7 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
   const shouldShowMiniPlayer = activeAudioPlayer != null;
 
   const {
+    deleteAllOwnMessagesForEveryone,
     destroyMessages,
     leaveGroup,
     onArchive,
@@ -159,6 +167,7 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
   } = useCallingActions();
   const { searchInConversation } = useSearchActions();
   const { viewUserStories } = useStoriesActions();
+  const { showToast } = useToastActions();
 
   const conversationByServiceIdSelector = useSelector(
     getConversationByServiceIdSelector
@@ -210,6 +219,36 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
   const onConversationDeleteMessages = useCallback(() => {
     destroyMessages(conversation.id);
   }, [destroyMessages, conversation.id]);
+
+  const onConversationDeleteAllForEveryone = useCallback(() => {
+    deleteAllOwnMessagesForEveryone(conversation.id);
+  }, [deleteAllOwnMessagesForEveryone, conversation.id]);
+
+  const onConversationExport = useCallback(async () => {
+    try {
+      const result = await exportConversationToDisk({
+        conversationId: conversation.id,
+        conversation: {
+          title: conversation.isMe ? 'Note to Self' : conversation.title,
+          type: conversation.type,
+        },
+        includeStoryReplies: conversation.type === 'direct',
+      });
+
+      if (result) {
+        showToast({
+          toastType: ToastType.FileSaved,
+          parameters: { fullPath: result.fullPath },
+        });
+      }
+    } catch (error) {
+      log.error(
+        'onConversationExport: export failed',
+        Errors.toLogFormat(error)
+      );
+      showToast({ toastType: ToastType.Error });
+    }
+  }, [conversation, showToast]);
 
   const onConversationDisappearingMessagesChange = useCallback(
     (seconds: DurationInSeconds) => {
@@ -310,7 +349,9 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
       onConversationBlock={onConversationBlock}
       onConversationBlockAndReportSpam={onConversationBlockAndReportSpam}
       onConversationDelete={onConversationDelete}
+      onConversationDeleteAllForEveryone={onConversationDeleteAllForEveryone}
       onConversationDeleteMessages={onConversationDeleteMessages}
+      onConversationExport={onConversationExport}
       onConversationDisappearingMessagesChange={
         onConversationDisappearingMessagesChange
       }

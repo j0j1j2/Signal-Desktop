@@ -159,7 +159,9 @@ export type PropsActionsType = {
   onConversationBlock: () => void;
   onConversationBlockAndReportSpam: () => void;
   onConversationDelete: () => void;
+  onConversationDeleteAllForEveryone: () => void;
   onConversationDeleteMessages: () => void;
+  onConversationExport: () => void;
   onConversationDisappearingMessagesChange: (
     seconds: DurationInSeconds
   ) => void;
@@ -210,7 +212,9 @@ export const ConversationHeader = memo(function ConversationHeader({
   onConversationBlock,
   onConversationBlockAndReportSpam,
   onConversationDelete,
+  onConversationDeleteAllForEveryone,
   onConversationDeleteMessages,
+  onConversationExport,
   onConversationDisappearingMessagesChange,
   onConversationLeaveGroup,
   onConversationMarkUnread,
@@ -249,6 +253,11 @@ export const ConversationHeader = memo(function ConversationHeader({
   ] = useState(false);
   const [hasDeleteMessagesConfirmation, setHasDeleteMessagesConfirmation] =
     useState(false);
+  const [
+    hasDeleteAllForEveryoneConfirmation,
+    setHasDeleteAllForEveryoneConfirmation,
+  ] = useState(false);
+  const [hasExportConfirmation, setHasExportConfirmation] = useState(false);
   const [hasLeaveGroupConfirmation, setHasLeaveGroupConfirmation] =
     useState(false);
   const [
@@ -290,6 +299,30 @@ export const ConversationHeader = memo(function ConversationHeader({
           }}
           onClose={() => {
             setHasDeleteMessagesConfirmation(false);
+          }}
+        />
+      )}
+      {hasDeleteAllForEveryoneConfirmation && (
+        <DeleteAllMessagesForEveryoneConfirmationDialog
+          i18n={i18n}
+          onClose={() => {
+            setHasDeleteAllForEveryoneConfirmation(false);
+          }}
+          onDelete={() => {
+            setHasDeleteAllForEveryoneConfirmation(false);
+            onConversationDeleteAllForEveryone();
+          }}
+        />
+      )}
+      {hasExportConfirmation && (
+        <ExportConversationConfirmationDialog
+          i18n={i18n}
+          onClose={() => {
+            setHasExportConfirmation(false);
+          }}
+          onExport={() => {
+            setHasExportConfirmation(false);
+            onConversationExport();
           }}
         />
       )}
@@ -386,6 +419,12 @@ export const ConversationHeader = memo(function ConversationHeader({
                   />
                 </AxoDropdownMenu.Trigger>
                 <HeaderDropdownMenuContent
+                  canDeleteAllForEveryone={
+                    !conversation.isMe &&
+                    !isSignalConversation &&
+                    !isSmsOnlyOrUnregistered &&
+                    !isTerminated
+                  }
                   i18n={i18n}
                   conversation={conversation}
                   isTerminated={isTerminated}
@@ -406,8 +445,14 @@ export const ConversationHeader = memo(function ConversationHeader({
                   onConversationDelete={() => {
                     setMessageRequestState(MessageRequestState.deleting);
                   }}
+                  onConversationDeleteAllForEveryone={() => {
+                    setHasDeleteAllForEveryoneConfirmation(true);
+                  }}
                   onConversationDeleteMessages={() => {
                     setHasDeleteMessagesConfirmation(true);
+                  }}
+                  onConversationExport={() => {
+                    setHasExportConfirmation(true);
                   }}
                   onConversationLeaveGroup={() => {
                     if (cannotLeaveBecauseYouAreLastAdmin) {
@@ -605,6 +650,7 @@ function HeaderContent({
 }
 
 function HeaderDropdownMenuContent({
+  canDeleteAllForEveryone,
   conversation,
   i18n,
   isMissingMandatoryProfileSharing,
@@ -617,7 +663,9 @@ function HeaderDropdownMenuContent({
   onConversationArchive,
   onConversationBlock,
   onConversationDelete,
+  onConversationDeleteAllForEveryone,
   onConversationDeleteMessages,
+  onConversationExport,
   onConversationLeaveGroup,
   onConversationMarkUnread,
   onConversationPin,
@@ -631,6 +679,7 @@ function HeaderDropdownMenuContent({
   onViewAllMedia,
   onViewConversationDetails,
 }: {
+  canDeleteAllForEveryone: boolean;
   conversation: MinimalConversation;
   i18n: LocalizerType;
   isMissingMandatoryProfileSharing: boolean;
@@ -643,7 +692,9 @@ function HeaderDropdownMenuContent({
   onConversationArchive: () => void;
   onConversationBlock: () => void;
   onConversationDelete: () => void;
+  onConversationDeleteAllForEveryone: () => void;
   onConversationDeleteMessages: () => void;
+  onConversationExport: () => void;
   onConversationLeaveGroup: () => void;
   onConversationMarkUnread: () => void;
   onConversationPin: () => void;
@@ -702,6 +753,10 @@ function HeaderDropdownMenuContent({
   if (isSignalConversation) {
     return (
       <AxoDropdownMenu.Content>
+        <AxoDropdownMenu.Item symbol="download" onSelect={onConversationExport}>
+          {i18n('icu:ConversationHeader__menu__exportChat')}
+        </AxoDropdownMenu.Item>
+        <AxoDropdownMenu.Separator />
         {conversation.isArchived ? (
           <AxoDropdownMenu.Item
             symbol="archive-up"
@@ -736,6 +791,9 @@ function HeaderDropdownMenuContent({
         <AxoDropdownMenu.Item symbol="album" onSelect={onViewAllMedia}>
           {i18n('icu:allMediaMenuItem')}
         </AxoDropdownMenu.Item>
+        <AxoDropdownMenu.Item symbol="download" onSelect={onConversationExport}>
+          {i18n('icu:ConversationHeader__menu__exportChat')}
+        </AxoDropdownMenu.Item>
         <AxoDropdownMenu.Separator />
         {conversation.isArchived ? (
           <AxoDropdownMenu.Item
@@ -764,6 +822,10 @@ function HeaderDropdownMenuContent({
 
   return (
     <AxoDropdownMenu.Content>
+      <AxoDropdownMenu.Item symbol="download" onSelect={onConversationExport}>
+        {i18n('icu:ConversationHeader__menu__exportChat')}
+      </AxoDropdownMenu.Item>
+      <AxoDropdownMenu.Separator />
       {!conversation.acceptedMessageRequest && (
         <>
           {!conversation.isBlocked && (
@@ -872,6 +934,16 @@ function HeaderDropdownMenuContent({
           >
             {i18n('icu:ConversationHeader__menu__selectMessages')}
           </AxoDropdownMenu.Item>
+          {canDeleteAllForEveryone ? (
+            <AxoDropdownMenu.Item
+              symbol="trash"
+              onSelect={onConversationDeleteAllForEveryone}
+            >
+              {i18n(
+                'icu:ConversationHeader__menu__deleteAllMessagesForEveryone'
+              )}
+            </AxoDropdownMenu.Item>
+          ) : null}
           <AxoDropdownMenu.Separator />
           {!conversation.markedUnread ? (
             <AxoDropdownMenu.Item
@@ -1095,6 +1167,60 @@ function LeaveGroupConfirmationDialog({
         disabled={cannotLeaveBecauseYouAreLastAdmin}
       >
         {i18n('icu:ConversationHeader__LeaveGroupConfirmation__confirmButton')}
+      </AxoConfirmDialog.Action>
+    </AxoConfirmDialog.Root>
+  );
+}
+
+function ExportConversationConfirmationDialog({
+  i18n,
+  onExport,
+  onClose,
+}: {
+  i18n: LocalizerType;
+  onExport: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <AxoConfirmDialog.Root
+      open
+      onOpenChange={onClose}
+      title={i18n('icu:ConversationHeader__ExportChatConfirmation__title')}
+      description={i18n(
+        'icu:ConversationHeader__ExportChatConfirmation__description'
+      )}
+    >
+      <AxoConfirmDialog.Cancel />
+      <AxoConfirmDialog.Action variant="primary" onClick={onExport}>
+        {i18n('icu:ConversationHeader__ExportChatConfirmation__confirmButton')}
+      </AxoConfirmDialog.Action>
+    </AxoConfirmDialog.Root>
+  );
+}
+
+function DeleteAllMessagesForEveryoneConfirmationDialog({
+  i18n,
+  onDelete,
+  onClose,
+}: {
+  i18n: LocalizerType;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <AxoConfirmDialog.Root
+      open
+      onOpenChange={onClose}
+      title={i18n(
+        'icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__title'
+      )}
+      description={i18n(
+        'icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__description'
+      )}
+    >
+      <AxoConfirmDialog.Cancel />
+      <AxoConfirmDialog.Action variant="destructive" onClick={onDelete}>
+        {i18n('icu:DeleteMessagesModal--deleteForEveryone')}
       </AxoConfirmDialog.Action>
     </AxoConfirmDialog.Root>
   );

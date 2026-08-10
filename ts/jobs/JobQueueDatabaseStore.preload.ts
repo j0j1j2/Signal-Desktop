@@ -57,6 +57,10 @@ export class JobQueueDatabaseStore implements JobQueueStore {
     await this.#db.deleteJob(id);
   }
 
+  async getJobs(queueType: string): Promise<Array<StoredJob>> {
+    return this.#db.getJobsInQueue(queueType);
+  }
+
   stream(queueType: string): AsyncIterable<StoredJob> {
     if (this.#activeQueueTypes.has(queueType)) {
       throw new Error(

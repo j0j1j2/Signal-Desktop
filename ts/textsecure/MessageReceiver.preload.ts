@@ -1454,8 +1454,9 @@ export default class MessageReceiver
     let inProgressMessageType = '';
     try {
       const content = Proto.Content.decode(plaintext);
-      // Custom: record the incoming Content for the packet-log viewer.
-      recordPacket('in', content);
+      // Custom: record the incoming Content and its decrypted envelope metadata
+      // for the packet-log viewer.
+      recordPacket('in', content, envelope);
       if (
         !wasEncrypted &&
         Bytes.isEmpty(content.content?.decryptionErrorMessage)

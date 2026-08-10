@@ -535,6 +535,14 @@
     "messageformat": "Select messages",
     "description": "Shown in menu for conversation, allows the user to start selecting multiple messages in the conversation"
   },
+  "icu:ConversationHeader__menu__deleteAllMessagesForEveryone": {
+    "messageformat": "Delete all my messages for everyone",
+    "description": "Shown in the conversation menu, queues a delete-for-everyone packet for every message sent by the user"
+  },
+  "icu:ConversationHeader__menu__exportChat": {
+    "messageformat": "Export chat",
+    "description": "Shown in the conversation menu, exports this conversation to a JSON file"
+  },
   "icu:ConversationHeader__MenuItem--Accept": {
     "messageformat": "Accept",
     "description": "Shown in menu for conversation, allows the user to accept a message request"
@@ -1666,6 +1674,14 @@
     "messageformat": "All messages in this chat will be deleted from all your devices.",
     "description": "Description for confirmation modal to delete a conversation"
   },
+  "icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__title": {
+    "messageformat": "Delete all your messages for everyone?",
+    "description": "Title of the confirmation shown before bulk deleting every message sent by the user"
+  },
+  "icu:ConversationHeader__DeleteAllMessagesForEveryoneConfirmation__description": {
+    "messageformat": "A separate delete-for-everyone packet will be queued for every message you sent in this chat. Messages from other people will not be changed. Recipients may still reject packets outside their deletion time limit.",
+    "description": "Explains that bulk delete for everyone targets only messages sent by the user"
+  },
   "icu:ConversationHeader__ContextMenu__LeaveGroupAction__title": {
     "messageformat": "Leave group",
     "description": "This is a button to leave a group"
@@ -1681,6 +1697,18 @@
   "icu:ConversationHeader__LeaveGroupConfirmation__confirmButton": {
     "messageformat": "Leave",
     "description": "Conversation Header > Leave Group Action > Leave Group Confirmation Modal > Confirm Button"
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__title": {
+    "messageformat": "Export this chat?",
+    "description": "Title for the confirmation dialog shown before exporting one conversation"
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__description": {
+    "messageformat": "This creates an unencrypted JSON file containing messages currently stored on this device, including disappearing and view-once message records and safe attachment metadata. Account identifiers, phone numbers, device numbers, keys, and local file paths are excluded. Be careful where you store or share it.",
+    "description": "Warning shown before exporting one conversation"
+  },
+  "icu:ConversationHeader__ExportChatConfirmation__confirmButton": {
+    "messageformat": "Export",
+    "description": "Confirmation button for exporting one conversation"
   },
   "icu:ConversationHeader__CannotLeaveGroupBecauseYouAreLastAdminAlert__description": {
     "messageformat": "Before you leave, you must choose at least one new admin for this group.",
