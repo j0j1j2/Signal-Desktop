@@ -609,11 +609,17 @@ export function reducer(
       return state;
     }
 
-    if (
-      action.type === MESSAGE_CHANGED &&
-      !action.payload.data.deletedForEveryone
-    ) {
+    if (action.type === MESSAGE_CHANGED) {
       const message = action.payload.data;
+
+      // A delete-for-everyone update should remove the media from the
+      // conversation, but it should not interrupt media that was already open.
+      // The lightbox owns a snapshot of the attachment and can keep using it
+      // until the user closes the viewer.
+      if (message.deletedForEveryone) {
+        return state;
+      }
+
       const attachmentsByDigest = new Map<string, AttachmentType>();
       if (!message.attachments || !message.attachments.length) {
         return state;
