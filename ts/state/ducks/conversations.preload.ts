@@ -148,6 +148,11 @@ import type { ShowToastActionType } from './toast.preload.ts';
 import { SHOW_TOAST } from './toast.preload.ts';
 import { ToastType } from '../../types/Toast.dom.tsx';
 import { isMemberRequestingToJoin } from '../../util/groupMembershipUtils.preload.ts';
+import type { MessageLoadTestOptions } from '../../util/messageLoadTest.std.ts';
+import {
+  formatMessageLoadTestBody,
+  isValidMessageLoadTestOptions,
+} from '../../util/messageLoadTest.std.ts';
 import { removePendingMember } from '../../util/removePendingMember.preload.ts';
 import { denyPendingApprovalRequest } from '../../util/denyPendingApprovalRequest.preload.ts';
 import { SignalService as Proto } from '../../protobuf/index.std.ts';
@@ -1181,6 +1186,8 @@ export const actions = {
   deleteAvatarFromDisk,
   deleteConversation,
   deleteAllOwnMessagesForEveryone,
+  sendMessageLoadTestMessages,
+  stopMessageLoadTest,
   deleteMessages,
   deleteMessagesForEveryone,
   destroyMessages,
@@ -3557,6 +3564,105 @@ export type PushPanelForConversationActionType = ReadonlyDeep<
 
 const DELETE_ALL_FOR_EVERYONE_PAGE_SIZE = 100;
 const DELETE_ALL_FOR_EVERYONE_BATCH_SIZE = 5;
+type ActiveMessageLoadTest = ReadonlyDeep<{
+  conversationId: string;
+  token: symbol;
+}>;
+let activeMessageLoadTest: ActiveMessageLoadTest | undefined;
+
+function sendMessageLoadTestMessages(
+  conversationId: string,
+  options: MessageLoadTestOptions
+): ThunkAction<
+  void,
+  RootStateType,
+  unknown,
+  NoopActionType | ShowToastActionType
+> {
+  return async dispatch => {
+    const conversation = window.ConversationController.get(conversationId);
+
+    if (
+      !conversation ||
+      !isValidMessageLoadTestOptions(options) ||
+      activeMessageLoadTest != null
+    ) {
+      log.error(
+        'sendMessageLoadTestMessages: rejected invalid or concurrent test',
+        conversationId
+      );
+      dispatch({
+        type: SHOW_TOAST,
+        payload: { toastType: ToastType.Error },
+      });
+      return;
+    }
+
+    const { intervalMs, messagePrefix } = options;
+    const test: ActiveMessageLoadTest = {
+      conversationId,
+      token: Symbol('messageLoadTest'),
+    };
+    activeMessageLoadTest = test;
+
+    try {
+      let sentCount = 0;
+      while (activeMessageLoadTest === test) {
+        // Keep this intentionally sequential and rate-limited. The feature is
+        // intended to exercise message loading without flooding the send queue.
+        // oxlint-disable-next-line no-await-in-loop
+        await conversation.enqueueMessageForSend(
+          {
+            attachments: [],
+            body: formatMessageLoadTestBody(messagePrefix),
+          },
+          {
+            dontClearDraft: true,
+            timestamp: Date.now(),
+          }
+        );
+        sentCount += 1;
+
+        if (activeMessageLoadTest === test) {
+          // oxlint-disable-next-line no-await-in-loop
+          await new Promise<void>(resolve => {
+            setTimeout(resolve, intervalMs);
+          });
+        }
+      }
+
+      log.info(
+        `sendMessageLoadTestMessages: stopped after queuing ${sentCount} messages for ${conversationId}`
+      );
+      dispatch(noopAction('sendMessageLoadTestMessages'));
+    } catch (error) {
+      log.error(
+        'sendMessageLoadTestMessages: failed',
+        conversationId,
+        Errors.toLogFormat(error)
+      );
+      dispatch({
+        type: SHOW_TOAST,
+        payload: { toastType: ToastType.Error },
+      });
+    } finally {
+      if (activeMessageLoadTest === test) {
+        activeMessageLoadTest = undefined;
+      }
+    }
+  };
+}
+
+function stopMessageLoadTest(): NoopActionType {
+  const test = activeMessageLoadTest;
+  activeMessageLoadTest = undefined;
+
+  if (test) {
+    log.info(`stopMessageLoadTest: stopping test for ${test.conversationId}`);
+  }
+
+  return noopAction('stopMessageLoadTest');
+}
 
 async function queueOwnDeletesForEveryonePage(
   messages: ReadonlyArray<MessageAttributesType>,

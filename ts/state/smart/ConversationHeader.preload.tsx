@@ -57,6 +57,7 @@ import { ToastType } from '../../types/Toast.dom.tsx';
 import { exportConversationToDisk } from '../../util/exportConversation.preload.ts';
 import { createLogger } from '../../logging/log.std.ts';
 import * as Errors from '../../types/errors.std.ts';
+import type { MessageLoadTestOptions } from '../../util/messageLoadTest.std.ts';
 
 const log = createLogger('SmartConversationHeader');
 
@@ -143,6 +144,8 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
 
   const {
     deleteAllOwnMessagesForEveryone,
+    sendMessageLoadTestMessages,
+    stopMessageLoadTest,
     destroyMessages,
     leaveGroup,
     onArchive,
@@ -250,6 +253,13 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
     }
   }, [conversation, showToast]);
 
+  const onConversationMessageLoadTest = useCallback(
+    (options: MessageLoadTestOptions) => {
+      sendMessageLoadTestMessages(conversation.id, options);
+    },
+    [conversation.id, sendMessageLoadTestMessages]
+  );
+
   const onConversationDisappearingMessagesChange = useCallback(
     (seconds: DurationInSeconds) => {
       setDisappearingMessages(conversation.id, seconds);
@@ -352,6 +362,8 @@ export const SmartConversationHeader = memo(function SmartConversationHeader({
       onConversationDeleteAllForEveryone={onConversationDeleteAllForEveryone}
       onConversationDeleteMessages={onConversationDeleteMessages}
       onConversationExport={onConversationExport}
+      onConversationMessageLoadTest={onConversationMessageLoadTest}
+      onConversationMessageLoadTestStop={stopMessageLoadTest}
       onConversationDisappearingMessagesChange={
         onConversationDisappearingMessagesChange
       }

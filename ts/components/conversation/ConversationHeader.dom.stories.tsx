@@ -76,6 +76,10 @@ const commonProps: PropsType = {
   ),
   onConversationDeleteMessages: action('onConversationDeleteMessages'),
   onConversationExport: action('onConversationExport'),
+  onConversationMessageLoadTest: action('onConversationMessageLoadTest'),
+  onConversationMessageLoadTestStop: action(
+    'onConversationMessageLoadTestStop'
+  ),
   onConversationDisappearingMessagesChange: action(
     'onConversationDisappearingMessagesChange'
   ),

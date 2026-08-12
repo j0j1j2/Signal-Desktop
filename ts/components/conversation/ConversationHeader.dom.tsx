@@ -53,6 +53,14 @@ import { OfficialChatInlineBadge } from './OfficialChatInlineBadge.dom.tsx';
 import { AxoIconButton } from '../../axo/AxoIconButton.dom.tsx';
 import { AxoButton } from '../../axo/AxoButton.dom.tsx';
 import { AxoConfirmDialog } from '../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoTextField } from '../../axo/AxoTextField.dom.tsx';
+import type { MessageLoadTestOptions } from '../../util/messageLoadTest.std.ts';
+import {
+  isValidMessageLoadTestOptions,
+  MESSAGE_LOAD_TEST_DEFAULT_INTERVAL_MS,
+  MESSAGE_LOAD_TEST_MAX_INTERVAL_MS,
+  MESSAGE_LOAD_TEST_MIN_INTERVAL_MS,
+} from '../../util/messageLoadTest.std.ts';
 
 function HeaderInfoTitle({
   name,
@@ -162,6 +170,8 @@ export type PropsActionsType = {
   onConversationDeleteAllForEveryone: () => void;
   onConversationDeleteMessages: () => void;
   onConversationExport: () => void;
+  onConversationMessageLoadTest: (options: MessageLoadTestOptions) => void;
+  onConversationMessageLoadTestStop: () => void;
   onConversationDisappearingMessagesChange: (
     seconds: DurationInSeconds
   ) => void;
@@ -215,6 +225,8 @@ export const ConversationHeader = memo(function ConversationHeader({
   onConversationDeleteAllForEveryone,
   onConversationDeleteMessages,
   onConversationExport,
+  onConversationMessageLoadTest,
+  onConversationMessageLoadTestStop,
   onConversationDisappearingMessagesChange,
   onConversationLeaveGroup,
   onConversationMarkUnread,
@@ -258,6 +270,8 @@ export const ConversationHeader = memo(function ConversationHeader({
     setHasDeleteAllForEveryoneConfirmation,
   ] = useState(false);
   const [hasExportConfirmation, setHasExportConfirmation] = useState(false);
+  const [hasMessageLoadTestConfirmation, setHasMessageLoadTestConfirmation] =
+    useState(false);
   const [hasLeaveGroupConfirmation, setHasLeaveGroupConfirmation] =
     useState(false);
   const [
@@ -324,6 +338,18 @@ export const ConversationHeader = memo(function ConversationHeader({
             setHasExportConfirmation(false);
             onConversationExport();
           }}
+        />
+      )}
+      {hasMessageLoadTestConfirmation && (
+        <MessageLoadTestConfirmationDialog
+          i18n={i18n}
+          onClose={() => {
+            setHasMessageLoadTestConfirmation(false);
+          }}
+          onStart={options => {
+            onConversationMessageLoadTest(options);
+          }}
+          onStop={onConversationMessageLoadTestStop}
         />
       )}
       {hasLeaveGroupConfirmation && (
@@ -453,6 +479,9 @@ export const ConversationHeader = memo(function ConversationHeader({
                   }}
                   onConversationExport={() => {
                     setHasExportConfirmation(true);
+                  }}
+                  onConversationMessageLoadTest={() => {
+                    setHasMessageLoadTestConfirmation(true);
                   }}
                   onConversationLeaveGroup={() => {
                     if (cannotLeaveBecauseYouAreLastAdmin) {
@@ -666,6 +695,7 @@ function HeaderDropdownMenuContent({
   onConversationDeleteAllForEveryone,
   onConversationDeleteMessages,
   onConversationExport,
+  onConversationMessageLoadTest,
   onConversationLeaveGroup,
   onConversationMarkUnread,
   onConversationPin,
@@ -695,6 +725,7 @@ function HeaderDropdownMenuContent({
   onConversationDeleteAllForEveryone: () => void;
   onConversationDeleteMessages: () => void;
   onConversationExport: () => void;
+  onConversationMessageLoadTest: () => void;
   onConversationLeaveGroup: () => void;
   onConversationMarkUnread: () => void;
   onConversationPin: () => void;
@@ -753,6 +784,12 @@ function HeaderDropdownMenuContent({
   if (isSignalConversation) {
     return (
       <AxoDropdownMenu.Content>
+        <AxoDropdownMenu.Item
+          symbol="message-thread"
+          onSelect={onConversationMessageLoadTest}
+        >
+          {i18n('icu:ConversationHeader__menu__messageLoadTest')}
+        </AxoDropdownMenu.Item>
         <AxoDropdownMenu.Item symbol="download" onSelect={onConversationExport}>
           {i18n('icu:ConversationHeader__menu__exportChat')}
         </AxoDropdownMenu.Item>
@@ -785,6 +822,12 @@ function HeaderDropdownMenuContent({
   if (isGroup && conversation.groupVersion !== 2) {
     return (
       <AxoDropdownMenu.Content>
+        <AxoDropdownMenu.Item
+          symbol="message-thread"
+          onSelect={onConversationMessageLoadTest}
+        >
+          {i18n('icu:ConversationHeader__menu__messageLoadTest')}
+        </AxoDropdownMenu.Item>
         <AxoDropdownMenu.Item symbol="group" onSelect={onShowMembers}>
           {i18n('icu:showMembers')}
         </AxoDropdownMenu.Item>
@@ -822,6 +865,12 @@ function HeaderDropdownMenuContent({
 
   return (
     <AxoDropdownMenu.Content>
+      <AxoDropdownMenu.Item
+        symbol="message-thread"
+        onSelect={onConversationMessageLoadTest}
+      >
+        {i18n('icu:ConversationHeader__menu__messageLoadTest')}
+      </AxoDropdownMenu.Item>
       <AxoDropdownMenu.Item symbol="download" onSelect={onConversationExport}>
         {i18n('icu:ConversationHeader__menu__exportChat')}
       </AxoDropdownMenu.Item>
@@ -1194,6 +1243,113 @@ function ExportConversationConfirmationDialog({
       <AxoConfirmDialog.Action variant="primary" onClick={onExport}>
         {i18n('icu:ConversationHeader__ExportChatConfirmation__confirmButton')}
       </AxoConfirmDialog.Action>
+    </AxoConfirmDialog.Root>
+  );
+}
+
+function MessageLoadTestConfirmationDialog({
+  i18n,
+  onStart,
+  onStop,
+  onClose,
+}: {
+  i18n: LocalizerType;
+  onStart: (options: MessageLoadTestOptions) => void;
+  onStop: () => void;
+  onClose: () => void;
+}) {
+  const [isRunning, setIsRunning] = useState(false);
+  const [messagePrefix, setMessagePrefix] = useState(() =>
+    i18n('icu:ConversationHeader__MessageLoadTest__messagePlaceholder')
+  );
+  const [intervalText, setIntervalText] = useState(
+    String(MESSAGE_LOAD_TEST_DEFAULT_INTERVAL_MS)
+  );
+  const options: MessageLoadTestOptions = {
+    intervalMs: Number(intervalText),
+    messagePrefix,
+  };
+  const isValid = isValidMessageLoadTestOptions(options);
+  const handleClose = () => {
+    if (isRunning) {
+      onStop();
+    }
+    onClose();
+  };
+
+  return (
+    <AxoConfirmDialog.Root
+      open
+      onOpenChange={handleClose}
+      title={i18n('icu:ConversationHeader__MessageLoadTest__title')}
+      description={
+        <div className={tw('flex flex-col gap-3 text-start')}>
+          <div>
+            {i18n('icu:ConversationHeader__MessageLoadTest__description')}
+          </div>
+          <label className={tw('flex flex-col gap-1')}>
+            <span className={tw('type-body-small')}>
+              {i18n('icu:ConversationHeader__MessageLoadTest__messageLabel')}
+            </span>
+            <AxoTextField.Root>
+              <AxoTextField.Input
+                placeholder={i18n(
+                  'icu:ConversationHeader__MessageLoadTest__messagePlaceholder'
+                )}
+                value={messagePrefix}
+                onValueChange={setMessagePrefix}
+                maxGraphemes={200}
+                maxBytes={800}
+                disabled={isRunning}
+                autoFocus
+              />
+            </AxoTextField.Root>
+          </label>
+          <label className={tw('flex flex-col gap-1')}>
+            <span className={tw('type-body-small')}>
+              {i18n('icu:ConversationHeader__MessageLoadTest__intervalLabel', {
+                minInterval: String(MESSAGE_LOAD_TEST_MIN_INTERVAL_MS),
+                maxInterval: String(MESSAGE_LOAD_TEST_MAX_INTERVAL_MS),
+              })}
+            </span>
+            <AxoTextField.Root>
+              <AxoTextField.Input
+                placeholder={String(MESSAGE_LOAD_TEST_DEFAULT_INTERVAL_MS)}
+                value={intervalText}
+                onValueChange={setIntervalText}
+                maxGraphemes={4}
+                maxBytes={4}
+                disabled={isRunning}
+              />
+            </AxoTextField.Root>
+          </label>
+        </div>
+      }
+    >
+      <AxoConfirmDialog.Cancel disabled={isRunning} />
+      {isRunning ? (
+        <AxoButton.Root
+          variant="destructive"
+          size="md"
+          width="grow"
+          onClick={handleClose}
+        >
+          {i18n('icu:ConversationHeader__MessageLoadTest__stop')}
+        </AxoButton.Root>
+      ) : (
+        <AxoButton.Root
+          variant="primary"
+          size="md"
+          width="grow"
+          disabled={!isValid}
+          onClick={() => {
+            setIsRunning(true);
+            onStart(options);
+          }}
+        >
+          {i18n('icu:ConversationHeader__MessageLoadTest__start')}
+        </AxoButton.Root>
+      )}
     </AxoConfirmDialog.Root>
   );
 }

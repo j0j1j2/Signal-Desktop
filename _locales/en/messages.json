@@ -543,6 +543,10 @@
     "messageformat": "Export chat",
     "description": "Shown in the conversation menu, exports this conversation to a JSON file"
   },
+  "icu:ConversationHeader__menu__messageLoadTest": {
+    "messageformat": "Message load test",
+    "description": "Shown in the conversation menu, opens the message load test dialog"
+  },
   "icu:ConversationHeader__MenuItem--Accept": {
     "messageformat": "Accept",
     "description": "Shown in menu for conversation, allows the user to accept a message request"
@@ -1709,6 +1713,34 @@
   "icu:ConversationHeader__ExportChatConfirmation__confirmButton": {
     "messageformat": "Export",
     "description": "Confirmation button for exporting one conversation"
+  },
+  "icu:ConversationHeader__MessageLoadTest__title": {
+    "messageformat": "Run a message load test?",
+    "description": "Title of the conversation message load test dialog"
+  },
+  "icu:ConversationHeader__MessageLoadTest__description": {
+    "messageformat": "Messages are sent continuously to this conversation until you stop the test. Only one test can run at a time.",
+    "description": "Safety limits for the conversation message load test"
+  },
+  "icu:ConversationHeader__MessageLoadTest__messageLabel": {
+    "messageformat": "Message prefix",
+    "description": "Label for the message prefix in the load test dialog"
+  },
+  "icu:ConversationHeader__MessageLoadTest__messagePlaceholder": {
+    "messageformat": "Load test",
+    "description": "Placeholder for the message prefix in the load test dialog"
+  },
+  "icu:ConversationHeader__MessageLoadTest__intervalLabel": {
+    "messageformat": "Interval in milliseconds ({minInterval}–{maxInterval})",
+    "description": "Label for the interval in the load test dialog"
+  },
+  "icu:ConversationHeader__MessageLoadTest__start": {
+    "messageformat": "Start test",
+    "description": "Confirmation button in the message load test dialog"
+  },
+  "icu:ConversationHeader__MessageLoadTest__stop": {
+    "messageformat": "Stop test",
+    "description": "Button that stops the running message load test"
   },
   "icu:ConversationHeader__CannotLeaveGroupBecauseYouAreLastAdminAlert__description": {
     "messageformat": "Before you leave, you must choose at least one new admin for this group.",
