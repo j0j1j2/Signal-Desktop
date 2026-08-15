@@ -1,7 +1,14 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { useState, useCallback, useRef, Fragment, type JSX } from 'react';
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  Fragment,
+  type JSX,
+} from 'react';
 import classNames from 'classnames';
 import { v4 as uuid } from 'uuid';
 
@@ -24,8 +31,266 @@ import { AxoButton } from '../axo/AxoButton.dom.tsx';
 import { AxoSwitch } from '../axo/AxoSwitch.dom.tsx';
 import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.ts';
 import { internalGetTestMegaphone } from '../util/getTestMegaphone.std.ts';
+import type { ConversationJobQueueDebugSnapshot } from '../types/ConversationJobQueueDebug.std.ts';
+import { drop } from '../util/drop.std.ts';
+import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
 
 const log = createLogger('PreferencesInternal');
+
+function ConversationJobQueueDebugger({
+  getSnapshot,
+  clearQueue,
+  setConcurrency,
+}: {
+  getSnapshot: () => Promise<ConversationJobQueueDebugSnapshot>;
+  clearQueue: (conversationId?: string) => Promise<number>;
+  setConcurrency: (concurrency: number) => void;
+}): JSX.Element {
+  const [snapshot, setSnapshot] = useState<ConversationJobQueueDebugSnapshot>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [lastClearResult, setLastClearResult] = useState<string>();
+  const [clearTarget, setClearTarget] = useState<{
+    conversationId?: string;
+    title: string;
+  }>();
+  const isRefreshPendingRef = useRef(false);
+
+  const refresh = useCallback(async () => {
+    if (isRefreshPendingRef.current) {
+      return;
+    }
+    isRefreshPendingRef.current = true;
+    setIsRefreshing(true);
+    try {
+      setSnapshot(await getSnapshot());
+    } catch (error) {
+      log.error(
+        'Failed to load conversationJobQueue debug snapshot',
+        toLogFormat(error)
+      );
+    } finally {
+      isRefreshPendingRef.current = false;
+      setIsRefreshing(false);
+    }
+  }, [getSnapshot]);
+
+  useEffect(() => {
+    drop(refresh());
+    const interval = setInterval(() => drop(refresh()), SECOND);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  const confirmClear = useCallback(async () => {
+    const target = clearTarget;
+    if (!target) {
+      return;
+    }
+    setClearTarget(undefined);
+    setIsClearing(true);
+    try {
+      const count = await clearQueue(target.conversationId);
+      setLastClearResult(
+        `Canceled ${count} persisted job${count === 1 ? '' : 's'} from ${target.title}.`
+      );
+      await refresh();
+    } catch (error) {
+      log.error('Failed to clear conversationJobQueue', toLogFormat(error));
+      setLastClearResult(`Clear failed: ${toLogFormat(error)}`);
+    } finally {
+      setIsClearing(false);
+    }
+  }, [clearQueue, clearTarget, refresh]);
+
+  const changeConcurrency = useCallback(
+    (value: string) => {
+      const concurrency = Number(value);
+      try {
+        setConcurrency(concurrency);
+        setSnapshot(current =>
+          current ? { ...current, concurrency } : current
+        );
+        setLastClearResult(
+          `Per-conversation concurrency changed to ${concurrency}. This resets to 1 after restarting the app.`
+        );
+        drop(refresh());
+      } catch (error) {
+        log.error(
+          'Failed to change conversationJobQueue concurrency',
+          toLogFormat(error)
+        );
+        setLastClearResult(`Concurrency change failed: ${toLogFormat(error)}`);
+      }
+    },
+    [refresh, setConcurrency]
+  );
+
+  return (
+    <>
+      {clearTarget && (
+        <AxoConfirmDialog.Root
+          open
+          onOpenChange={() => setClearTarget(undefined)}
+          title="Clear conversationJobQueue?"
+          description={`This cancels every persisted job in ${clearTarget.title}. The currently running job may still finish.`}
+        >
+          <AxoConfirmDialog.Cancel />
+          <AxoConfirmDialog.Action variant="destructive" onClick={confirmClear}>
+            Clear queue
+          </AxoConfirmDialog.Action>
+        </AxoConfirmDialog.Root>
+      )}
+      <SettingsRow title="conversationJobQueue debugger">
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">
+            Inspect all persisted and in-memory conversation jobs. The table
+            refreshes every second.
+          </div>
+          <div
+            className={classNames(
+              'Preferences__flow-button',
+              'Preferences__one-third-flow',
+              'Preferences__one-third-flow--align-right'
+            )}
+          >
+            <AxoButton.Root
+              variant="secondary"
+              size="lg"
+              onClick={refresh}
+              pending={isRefreshing}
+            >
+              Refresh
+            </AxoButton.Root>
+            <AxoButton.Root
+              variant="destructive"
+              size="lg"
+              onClick={() => setClearTarget({ title: 'all conversations' })}
+              pending={isClearing}
+              disabled={!snapshot?.persistedCount}
+            >
+              Clear all
+            </AxoButton.Root>
+          </div>
+        </FlowingSettingsControl>
+
+        <FlowingSettingsControl>
+          <div className="Preferences__two-thirds-flow">
+            <strong>Per-conversation concurrency</strong>
+            <p>
+              Higher values drain each conversation faster, but may reorder
+              messages and increase retries. This setting is temporary and
+              resets to 1 when the app restarts.
+            </p>
+          </div>
+          <div
+            className={classNames(
+              'Preferences__one-third-flow',
+              'Preferences__one-third-flow--align-right'
+            )}
+          >
+            <select
+              aria-label="Per-conversation queue concurrency"
+              value={snapshot?.concurrency ?? 1}
+              disabled={!snapshot}
+              onChange={event => changeConcurrency(event.target.value)}
+            >
+              {Array.from({ length: 10 }, (_, index) => index + 1).map(
+                concurrency => (
+                  <option key={concurrency} value={concurrency}>
+                    {concurrency}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+        </FlowingSettingsControl>
+
+        <div className="Preferences--internal--result">
+          <p>
+            Concurrency: {snapshot?.concurrency ?? '—'} · Persisted:{' '}
+            {snapshot?.persistedCount ?? '—'} · In-memory waiting:{' '}
+            {snapshot?.inMemoryPendingCount ?? '—'} · Running:{' '}
+            {snapshot?.runningCount ?? '—'}
+          </p>
+          {lastClearResult && <p>{lastClearResult}</p>}
+          {snapshot?.conversations.length ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #ddd' }}>
+                  <th style={{ padding: '8px', textAlign: 'left' }}>
+                    Conversation
+                  </th>
+                  <th style={{ padding: '8px', textAlign: 'right' }}>Stored</th>
+                  <th style={{ padding: '8px', textAlign: 'right' }}>
+                    Waiting
+                  </th>
+                  <th style={{ padding: '8px', textAlign: 'right' }}>
+                    Running
+                  </th>
+                  <th style={{ padding: '8px', textAlign: 'left' }}>Types</th>
+                  <th style={{ padding: '8px', textAlign: 'left' }}>Oldest</th>
+                  <th style={{ padding: '8px', textAlign: 'right' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {snapshot.conversations.map(row => (
+                  <tr
+                    key={row.conversationId}
+                    style={{ borderBottom: '1px solid #eee' }}
+                  >
+                    <td style={{ padding: '8px' }}>
+                      <div>{row.title}</div>
+                      <code>{row.conversationId}</code>
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {row.persistedCount}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {row.inMemoryPendingCount}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {row.runningCount}
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      {row.jobsByType
+                        .map(({ type, count }) => `${type}: ${count}`)
+                        .join(', ') || '—'}
+                    </td>
+                    <td style={{ padding: '8px' }}>
+                      {row.oldestTimestamp
+                        ? new Date(row.oldestTimestamp).toLocaleTimeString()
+                        : '—'}
+                    </td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {row.conversationId !== '<invalid>' && (
+                        <AxoButton.Root
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            setClearTarget({
+                              conversationId: row.conversationId,
+                              title: row.title,
+                            })
+                          }
+                          pending={isClearing}
+                          disabled={!row.persistedCount}
+                        >
+                          Clear
+                        </AxoButton.Root>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p>Queue is empty.</p>
+          )}
+        </div>
+      </SettingsRow>
+    </>
+  );
+}
 
 export function PreferencesInternal({
   i18n,
@@ -41,6 +306,9 @@ export function PreferencesInternal({
   __dangerouslyRunAbitraryReadOnlySqlQuery,
   cqsTestMode,
   setCqsTestMode,
+  getConversationJobQueueDebugSnapshot,
+  clearConversationJobQueue,
+  setConversationJobQueueConcurrency,
 
   dredDuration,
   setDredDuration,
@@ -81,6 +349,9 @@ export function PreferencesInternal({
   ) => Promise<ReadonlyArray<RowType<object>>>;
   cqsTestMode: boolean;
   setCqsTestMode: (value: boolean) => void;
+  getConversationJobQueueDebugSnapshot: () => Promise<ConversationJobQueueDebugSnapshot>;
+  clearConversationJobQueue: (conversationId?: string) => Promise<number>;
+  setConversationJobQueueConcurrency: (concurrency: number) => void;
   dredDuration: number | undefined;
   setDredDuration: (value: number | undefined) => void;
   isDirectVp9Enabled: boolean | undefined;
@@ -329,6 +600,11 @@ export function PreferencesInternal({
 
   return (
     <div className="Preferences--internal">
+      <ConversationJobQueueDebugger
+        getSnapshot={getConversationJobQueueDebugSnapshot}
+        clearQueue={clearConversationJobQueue}
+        setConcurrency={setConversationJobQueueConcurrency}
+      />
       <SettingsRow
         className="Preferences--internal--backups"
         title={i18n('icu:Preferences__button--backups')}

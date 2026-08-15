@@ -1592,9 +1592,7 @@ export default class MessageReceiver
       (envelope.sourceServiceId &&
         this.#isServiceIdBlocked(envelope.sourceServiceId))
     ) {
-      log.info(`${logId}: Dropping message from blocked sender`);
-      this.#removeFromCache(envelope);
-      return { plaintext: undefined, envelope };
+      log.info(`${logId}: Preserving message from blocked sender`);
     }
 
     return { plaintext, envelope };

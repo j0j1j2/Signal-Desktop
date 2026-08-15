@@ -139,14 +139,14 @@ describe('RemoteConfig', () => {
   });
 
   describe('#isEnabled', () => {
-    it('is false for missing flag', async () => {
+    it('forces the internal user flag on when it is missing', async () => {
       await updateRemoteConfig([]);
-      assert.equal(isEnabled('desktop.internalUser'), false);
+      assert.equal(isEnabled('desktop.internalUser'), true);
     });
 
-    it('is false for disabled flag', async () => {
+    it('forces the internal user flag on when it is disabled', async () => {
       await updateRemoteConfig([]);
-      assert.equal(isEnabled('desktop.internalUser'), false);
+      assert.equal(isEnabled('desktop.internalUser'), true);
     });
 
     it('is true for enabled flag', async () => {
@@ -163,11 +163,11 @@ describe('RemoteConfig', () => {
       assert.equal(isEnabled('desktop.internalUser'), true);
     });
 
-    it('is false for false string flag', async () => {
+    it('forces the internal user flag on for a false string flag', async () => {
       await updateRemoteConfig([
         { name: 'desktop.internalUser', value: 'false' },
       ]);
-      assert.equal(isEnabled('desktop.internalUser'), false);
+      assert.equal(isEnabled('desktop.internalUser'), true);
     });
 
     it('reflects the value of an unknown flag in the config', async () => {

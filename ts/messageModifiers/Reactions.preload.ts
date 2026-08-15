@@ -50,12 +50,14 @@ import {
 import { maybeNotify } from '../messages/maybeNotify.preload.ts';
 import { itemStorage } from '../textsecure/Storage.preload.ts';
 import type { Emoji } from '../axo/emoji.std.ts';
+import { maybeEnqueueCopycatReaction } from '../messages/copycatMode.preload.ts';
 
 const { maxBy } = lodash;
 
 const log = createLogger('Reactions');
 
 export type ReactionAttributesType = {
+  allowBlocked?: boolean;
   emoji: Emoji.Variant;
   envelopeId: string;
   fromId: string;
@@ -214,7 +216,8 @@ export function isMessageAMatchForReaction({
     const reactionSenderServiceId = reactionSenderConversation.getServiceId();
     return (
       reactionSenderServiceId != null &&
-      messageConversation.hasMember(reactionSenderServiceId)
+      (messageConversation.hasMember(reactionSenderServiceId) ||
+        reactionSenderConversation.isBlocked())
     );
   }
 
@@ -288,6 +291,11 @@ export async function onReaction(
         // if the reaction is targeted at a story.
         if (!isStory(targetMessage)) {
           await handleReaction(targetMessageModel, reaction);
+          await maybeEnqueueCopycatReaction(
+            targetMessageModel,
+            reaction,
+            matchingMessageConversation
+          );
         } else {
           const generatedMessage = reaction.generatedMessageForStoryReaction;
           strictAssert(
@@ -594,6 +602,7 @@ export async function handleReaction(
       };
     } else {
       jobData = {
+        allowBlocked: reaction.allowBlocked,
         type: conversationQueueJobEnum.enum.Reaction,
         conversationId: conversation.id,
         messageId: message.id,

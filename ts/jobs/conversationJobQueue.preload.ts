@@ -3,6 +3,7 @@
 
 import { z } from 'zod';
 import type PQueue from 'p-queue';
+import type { ReadonlyDeep } from 'type-fest';
 import { createLogger } from '../logging/log.std.ts';
 
 import * as durations from '../util/durations/index.std.ts';
@@ -59,8 +60,12 @@ import { parseUnknown } from '../util/schemas.std.ts';
 import { challengeHandler } from '../services/challengeHandler.preload.ts';
 import { sendPinMessage } from './helpers/sendPinMessage.preload.ts';
 import { sendUnpinMessage } from './helpers/sendUnpinMessage.preload.ts';
+import type { ConversationJobQueueDebugSnapshot } from '../types/ConversationJobQueueDebug.std.ts';
 
 const globalLogger = createLogger('conversationJobQueue');
+
+const MIN_DEBUG_CONCURRENCY = 1;
+const MAX_DEBUG_CONCURRENCY = 10;
 
 // Note: generally, we only want to add to this list. If you do need to change one of
 //   these values, you'll likely need to write a database migration.
@@ -194,6 +199,7 @@ const profileKeyJobDataSchema = z.object({
 export type ProfileKeyJobData = z.infer<typeof profileKeyJobDataSchema>;
 
 const reactionJobDataSchema = z.object({
+  allowBlocked: z.boolean().optional(),
   type: z.literal(conversationQueueJobEnum.enum.Reaction),
   conversationId: z.string(),
   messageId: z.string(),
@@ -330,6 +336,11 @@ export type ConversationQueueJobBundle = {
   timestamp: number;
 };
 
+export type ConversationJobQueueCancellationResult = ReadonlyDeep<{
+  canceledJobCount: number;
+  normalMessageIds: ReadonlyArray<string>;
+}>;
+
 const MAX_RETRY_TIME = durations.DAY;
 const MAX_ATTEMPTS = exponentialBackoffMaxAttempts(MAX_RETRY_TIME);
 
@@ -455,6 +466,8 @@ type ConversationData = Readonly<
 >;
 
 class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
+  readonly #canceledJobIds = new Set<string>();
+
   readonly #canceledDeleteForEveryoneJobIds = new Set<string>();
 
   readonly #perConversationData = new Map<
@@ -493,6 +506,166 @@ class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
     }
 
     return super.add(data, insert);
+  }
+
+  public async getDebugSnapshot(): Promise<ConversationJobQueueDebugSnapshot> {
+    const storedJobs = await jobQueueDatabaseStore.getJobs('conversation');
+    const inMemoryQueues = this.#inMemoryQueues.entries;
+    const rowsByConversationId = new Map<
+      string,
+      {
+        persistedCount: number;
+        oldestTimestamp: number | undefined;
+        jobsByType: Map<string, number>;
+      }
+    >();
+
+    for (const job of storedJobs) {
+      const parsed = conversationQueueJobDataSchema.safeParse(job.data);
+      const conversationId = parsed.success
+        ? parsed.data.conversationId
+        : '<invalid>';
+      const type = parsed.success ? parsed.data.type : '<invalid>';
+      let row = rowsByConversationId.get(conversationId);
+      if (!row) {
+        row = {
+          persistedCount: 0,
+          oldestTimestamp: undefined,
+          jobsByType: new Map(),
+        };
+        rowsByConversationId.set(conversationId, row);
+      }
+
+      row.persistedCount += 1;
+      row.oldestTimestamp = Math.min(
+        row.oldestTimestamp ?? job.timestamp,
+        job.timestamp
+      );
+      row.jobsByType.set(type, (row.jobsByType.get(type) ?? 0) + 1);
+    }
+
+    for (const conversationId of inMemoryQueues.keys()) {
+      if (!rowsByConversationId.has(conversationId)) {
+        rowsByConversationId.set(conversationId, {
+          persistedCount: 0,
+          oldestTimestamp: undefined,
+          jobsByType: new Map(),
+        });
+      }
+    }
+
+    const conversations = [...rowsByConversationId.entries()]
+      .map(([conversationId, row]) => {
+        const queue = inMemoryQueues.get(conversationId);
+        const conversation = window.ConversationController.get(conversationId);
+        return {
+          conversationId,
+          title:
+            conversationId === '<invalid>'
+              ? 'Invalid jobs'
+              : (conversation?.getTitle() ?? conversationId),
+          persistedCount: row.persistedCount,
+          inMemoryPendingCount: queue?.size ?? 0,
+          runningCount: queue?.pending ?? 0,
+          oldestTimestamp: row.oldestTimestamp,
+          jobsByType: [...row.jobsByType.entries()]
+            .map(([type, count]) => ({ type, count }))
+            .toSorted((left, right) => left.type.localeCompare(right.type)),
+        };
+      })
+      .toSorted(
+        (left, right) =>
+          right.persistedCount - left.persistedCount ||
+          left.title.localeCompare(right.title)
+      );
+
+    let inMemoryPendingCount = 0;
+    let runningCount = 0;
+    for (const queue of inMemoryQueues.values()) {
+      inMemoryPendingCount += queue.size;
+      runningCount += queue.pending;
+    }
+
+    return {
+      capturedAt: Date.now(),
+      concurrency: this.#inMemoryQueues.concurrency,
+      persistedCount: storedJobs.length,
+      inMemoryPendingCount,
+      runningCount,
+      conversations,
+    };
+  }
+
+  public setDebugConcurrency(concurrency: number): void {
+    if (
+      !Number.isInteger(concurrency) ||
+      concurrency < MIN_DEBUG_CONCURRENCY ||
+      concurrency > MAX_DEBUG_CONCURRENCY
+    ) {
+      throw new Error(
+        `conversationJobQueue concurrency must be an integer from ${MIN_DEBUG_CONCURRENCY} to ${MAX_DEBUG_CONCURRENCY}`
+      );
+    }
+
+    globalLogger.warn(
+      `Changing per-conversation concurrency from ${this.#inMemoryQueues.concurrency} to ${concurrency}`
+    );
+    this.#inMemoryQueues.concurrency = concurrency;
+  }
+
+  public async cancelPendingJobs(
+    conversationId?: string
+  ): Promise<ConversationJobQueueCancellationResult> {
+    const storedJobs = await jobQueueDatabaseStore.getJobs('conversation');
+    const jobsToCancel = storedJobs.filter(job => {
+      if (conversationId == null) {
+        return true;
+      }
+      const parsed = conversationQueueJobDataSchema.safeParse(job.data);
+      return parsed.success && parsed.data.conversationId === conversationId;
+    });
+    const affectedConversationIds = new Set<string>();
+    const normalMessageIds = new Set<string>();
+
+    for (const job of jobsToCancel) {
+      this.#canceledJobIds.add(job.id);
+      const parsed = conversationQueueJobDataSchema.safeParse(job.data);
+      if (!parsed.success) {
+        continue;
+      }
+      affectedConversationIds.add(parsed.data.conversationId);
+      if (parsed.data.type === conversationQueueJobEnum.enum.NormalMessage) {
+        normalMessageIds.add(parsed.data.messageId);
+      }
+    }
+
+    for (const affectedConversationId of affectedConversationIds) {
+      const data = this.#perConversationData.get(affectedConversationId);
+      clearTimeoutIfNecessary(
+        data && 'retryAtTimeout' in data ? data.retryAtTimeout : undefined
+      );
+      this.#perConversationData.delete(affectedConversationId);
+    }
+
+    const DELETE_BATCH_SIZE = 100;
+    for (
+      let index = 0;
+      index < jobsToCancel.length;
+      index += DELETE_BATCH_SIZE
+    ) {
+      const batch = jobsToCancel.slice(index, index + DELETE_BATCH_SIZE);
+      // oxlint-disable-next-line no-await-in-loop
+      await Promise.all(batch.map(job => jobQueueDatabaseStore.delete(job.id)));
+    }
+
+    globalLogger.warn(
+      `Canceled ${jobsToCancel.length} pending conversation jobs` +
+        (conversationId == null ? '' : ` for conversation ${conversationId}`)
+    );
+    return {
+      canceledJobCount: jobsToCancel.length,
+      normalMessageIds: [...normalMessageIds],
+    };
   }
 
   public async cancelPendingDeleteForEveryoneJobs(
@@ -894,6 +1067,11 @@ class ConversationJobQueue extends JobQueue<ConversationQueueJobData> {
     }>,
     { attempt, log }: Readonly<{ attempt: number; log: LoggerType }>
   ): Promise<typeof JOB_STATUS.NEEDS_RETRY | undefined> {
+    if (this.#canceledJobIds.delete(id)) {
+      log.info('Skipping canceled conversation job');
+      return undefined;
+    }
+
     if (this.#canceledDeleteForEveryoneJobIds.delete(id)) {
       log.info('Skipping canceled delete-for-everyone job');
       return undefined;

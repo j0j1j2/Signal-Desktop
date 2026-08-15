@@ -35,6 +35,47 @@ $custom-amount-width: 320px;
   );
 }
 
+.DonationAmountPicker__CurrencyRecommendation {
+  @include mixins.font-body-small;
+  display: flex;
+  width: min(340px, 100%);
+  padding-block: 10px;
+  padding-inline: 12px;
+  margin-block: 10px 2px;
+  margin-inline: auto;
+  border: 1px solid
+    light-dark(variables.$color-ultramarine-light, variables.$color-ultramarine);
+  border-radius: 8px;
+  background: light-dark(
+    variables.$color-ultramarine-pale,
+    variables.$color-gray-75
+  );
+  color: light-dark(variables.$color-gray-90, variables.$color-gray-05);
+  cursor: pointer;
+  flex-direction: column;
+  gap: 2px;
+  text-align: start;
+}
+
+.DonationAmountPicker__CurrencyRecommendation:hover {
+  background: light-dark(
+    variables.$color-ultramarine-pastel,
+    variables.$color-gray-65
+  );
+}
+
+.DonationAmountPicker__CurrencyRecommendationTitle {
+  color: variables.$color-ultramarine;
+  font-weight: 600;
+}
+
+.DonationAmountPicker__CurrencyRecommendationNote {
+  color: light-dark(
+    variables.$color-black-alpha-60,
+    variables.$color-white-alpha-60
+  );
+}
+
 .DonationForm__HelpFooter {
   @include mixins.font-body-small;
   flex-grow: 1;

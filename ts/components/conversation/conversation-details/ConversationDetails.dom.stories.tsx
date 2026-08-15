@@ -116,6 +116,7 @@ const createProps = (
     })),
     selectedNavTab: NavTab.Chats,
     setDisappearingMessages: action('setDisappearingMessages'),
+    setCopycatTarget: action('setCopycatTarget'),
     showContactModal: action('showContactModal'),
     pushPanelForConversation: action('pushPanelForConversation'),
     showConversation: action('showConversation'),

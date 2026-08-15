@@ -44,11 +44,6 @@ export const getUniversalExpireTimer = createSelector(
     DurationInSeconds.fromSeconds(state.universalExpireTimer || 0)
 );
 
-const isRemoteConfigFlagEnabled = (
-  config: Readonly<ConfigMapType>,
-  key: ConfigKeyType
-): boolean => Boolean(config[key]?.enabled);
-
 // See isBucketValueEnabled in RemoteConfig.ts
 /** @knipignore Keep around for future features that might need it */
 export const isRemoteConfigBucketEnabled = (
@@ -115,9 +110,7 @@ export const getUsernameLink = createSelector(
 
 export const isInternalUser = createSelector(
   getRemoteConfig,
-  (remoteConfig: ConfigMapType): boolean => {
-    return isRemoteConfigFlagEnabled(remoteConfig, 'desktop.internalUser');
-  }
+  (): boolean => true
 );
 
 // Note: ts/util/stories is the other place this check is done

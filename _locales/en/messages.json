@@ -6522,6 +6522,26 @@
     "messageformat": "When enabled, messages sent and received in this 1:1 chat will disappear after they've been seen.",
     "description": "This is the info about the disappearing messages setting, for direct conversations"
   },
+  "icu:ConversationDetails--copycat-mode-label": {
+    "messageformat": "Copycat mode",
+    "description": "Label for the copycat mode setting"
+  },
+  "icu:ConversationDetails--copycat-mode-info--direct": {
+    "messageformat": "Automatically repeats this person's incoming text, media, stickers, and reactions. Text and media are labeled [name]: message.",
+    "description": "Description of copycat mode in a direct conversation"
+  },
+  "icu:ConversationDetails--copycat-mode-info--group": {
+    "messageformat": "Automatically repeats the selected member's incoming text, media, stickers, and reactions. Text and media are labeled [name]: message.",
+    "description": "Description of copycat mode in a group conversation"
+  },
+  "icu:ConversationDetails--copycat-mode-off": {
+    "messageformat": "Off",
+    "description": "Option that disables copycat mode"
+  },
+  "icu:ConversationDetails--copycat-mode-select-label": {
+    "messageformat": "Choose copycat target",
+    "description": "Accessible label for the copycat mode member selector"
+  },
   "icu:ConversationDetails--nickname-label": {
     "messageformat": "Nickname",
     "description": "This is the label for the nickname setting panel"
@@ -10545,6 +10565,18 @@
   "icu:DonateFlow__continue": {
     "messageformat": "Continue",
     "description": "While making a donation and selecting the donation amount, this is the primary button to move to the next step."
+  },
+  "icu:DonateFlow__cheapest-currency-title": {
+    "messageformat": "Lowest minimum donation at current rates",
+    "description": "Title for a recommendation showing which donation currency currently has the lowest minimum amount after currency conversion."
+  },
+  "icu:DonateFlow__cheapest-currency-amount": {
+    "messageformat": "{currency} {minimum} ≈ {convertedMinimum}",
+    "description": "Shows a recommended donation currency, its minimum amount, and that amount converted to the user's local currency."
+  },
+  "icu:DonateFlow__cheapest-currency-note": {
+    "messageformat": "Reference rate from {rateDate}. Card issuer fees may change the final cost. Select to use this currency.",
+    "description": "Disclaimer below a currency recommendation based on a recent reference exchange rate."
   },
   "icu:DonationReceipt__title": {
     "messageformat": "Donation receipt",

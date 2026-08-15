@@ -211,4 +211,59 @@ describe('both/state/ducks/composer', () => {
       assert.equal(composerState.quotedMessage?.quote?.id, 456);
     });
   });
+
+  describe('sendStickerMessage', () => {
+    it('sends the selected quote with the sticker', async () => {
+      const sendStickerMessage = sinon.stub().resolves();
+      const conversation = {
+        attributes: {
+          e164: '+15551234567',
+          id: '123',
+          type: 'private' as const,
+        },
+        sendStickerMessage,
+      };
+      const oldConversationController = window.ConversationController;
+      const oldGetVersion = window.getVersion;
+      const oldReduxStore = window.reduxStore;
+      window.getVersion = () => '8.15.0-alpha.1';
+      window.ConversationController = {
+        get: () => conversation,
+        // oxlint-disable-next-line typescript/no-explicit-any
+      } as any;
+
+      try {
+        const rootState = getRootStateFunction('123')();
+        const stateWithQuote = {
+          ...rootState,
+          composer: reducer(
+            rootState.composer,
+            actions.setQuotedMessage('123', QUOTED_MESSAGE)
+          ),
+        };
+        // oxlint-disable-next-line typescript/no-explicit-any
+        window.reduxStore = { getState: () => stateWithQuote } as any;
+
+        await actions.sendStickerMessage('123', {
+          packId: 'pack-id',
+          stickerId: 42,
+        })(sinon.spy(), () => stateWithQuote, null);
+
+        sinon.assert.calledOnce(sendStickerMessage);
+        sinon.assert.calledWith(
+          sendStickerMessage,
+          'pack-id',
+          42,
+          sinon.match({
+            quote: QUOTED_MESSAGE.quote,
+            extraReduxActions: sinon.match.func,
+          })
+        );
+      } finally {
+        window.ConversationController = oldConversationController;
+        window.getVersion = oldGetVersion;
+        window.reduxStore = oldReduxStore;
+      }
+    });
+  });
 });

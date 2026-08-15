@@ -4006,7 +4006,17 @@ export class ConversationModel {
     return getQuoteAttachment(attachments, preview, sticker);
   }
 
-  async sendStickerMessage(packId: string, stickerId: number): Promise<void> {
+  async sendStickerMessage(
+    packId: string,
+    stickerId: number,
+    {
+      quote,
+      extraReduxActions,
+    }: {
+      quote?: QuotedMessageType;
+      extraReduxActions?: () => void;
+    } = {}
+  ): Promise<void> {
     const packData = Stickers.getStickerPack(packId);
     const stickerData = Stickers.getSticker(packId, stickerId);
     if (!stickerData || !packData) {
@@ -4056,15 +4066,14 @@ export class ConversationModel {
       },
     };
 
-    drop(
-      this.enqueueMessageForSend(
-        {
-          body: undefined,
-          attachments: [],
-          sticker,
-        },
-        { dontClearDraft: true }
-      )
+    await this.enqueueMessageForSend(
+      {
+        body: undefined,
+        attachments: [],
+        quote,
+        sticker,
+      },
+      { dontClearDraft: true, extraReduxActions }
     );
     window.reduxActions.stickers.useSticker(packId, stickerId);
   }
@@ -4111,19 +4120,22 @@ export class ConversationModel {
     message,
     dontAddMessage,
     dontClearDraft,
+    dontEnableProfileSharing,
     now,
     extraReduxActions,
   }: {
     message: MessageAttributesType;
     dontAddMessage: boolean;
     dontClearDraft: boolean;
+    dontEnableProfileSharing?: boolean;
     now: number;
     extraReduxActions?: () => void;
   }): void {
     const { clearUnreadMetrics } = window.reduxActions.conversations;
     clearUnreadMetrics(this.id);
 
-    const enabledProfileSharing = !this.get('profileSharing');
+    const enabledProfileSharing =
+      !dontEnableProfileSharing && !this.get('profileSharing');
     const unarchivedConversation = this.get('isArchived');
 
     log.info(
@@ -4194,6 +4206,7 @@ export class ConversationModel {
     },
     {
       dontClearDraft = false,
+      dontEnableProfileSharing = false,
       isForwarding = false,
       sendHQImages,
       storyId,
@@ -4201,6 +4214,7 @@ export class ConversationModel {
       extraReduxActions,
     }: {
       dontClearDraft?: boolean;
+      dontEnableProfileSharing?: boolean;
       isForwarding?: boolean;
       sendHQImages?: boolean;
       storyId?: string;
@@ -4348,9 +4362,11 @@ export class ConversationModel {
     );
 
     // Make sure profile sharing is enabled before job is queued and run
-    this.enableProfileSharing({
-      reason: 'mandatoryProfileSharing',
-    });
+    if (!dontEnableProfileSharing) {
+      this.enableProfileSharing({
+        reason: 'mandatoryProfileSharing',
+      });
+    }
 
     await conversationJobQueue.add(
       {
@@ -4397,6 +4413,7 @@ export class ConversationModel {
       dontClearDraft,
       dontAddMessage: false,
       now,
+      dontEnableProfileSharing,
       extraReduxActions,
     });
 

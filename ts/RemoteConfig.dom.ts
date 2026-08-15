@@ -307,7 +307,7 @@ export const _refreshRemoteConfig = async ({
     }
   }
 
-  if (semverError && config['desktop.internalUser']?.enabled) {
+  if (semverError && isEnabled('desktop.internalUser')) {
     window.reduxActions.toast.showToast({
       toastType: ToastType.Error,
     });
@@ -358,6 +358,12 @@ export function isEnabled(
   // when called from UI component, provide redux config (items.remoteConfig)
   reduxConfig?: ConfigMapType
 ): boolean {
+  // Custom debug build: expose all internal-only features regardless of the
+  // server-provided bucket assignment.
+  if (name === 'desktop.internalUser') {
+    return true;
+  }
+
   assertDev(
     reduxConfig != null || config != null,
     'getValue called before remote config is ready'

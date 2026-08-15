@@ -103,6 +103,7 @@ import { TitlebarDragArea } from './TitlebarDragArea.dom.tsx';
 import type { PreferredBadgeSelectorType } from '../state/selectors/badges.preload.ts';
 import { Emoji } from '../axo/emoji.std.ts';
 import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
+import type { ConversationJobQueueDebugSnapshot } from '../types/ConversationJobQueueDebug.std.ts';
 
 const { isNumber, noop, partition } = lodash;
 
@@ -269,6 +270,9 @@ type PropsFunctionType = {
   getMessageSampleForSchemaVersion: (
     version: number
   ) => Promise<Array<MessageAttributesType>>;
+  getConversationJobQueueDebugSnapshot: () => Promise<ConversationJobQueueDebugSnapshot>;
+  clearConversationJobQueue: (conversationId?: string) => Promise<number>;
+  setConversationJobQueueConcurrency: (concurrency: number) => void;
   getPreferredBadge: PreferredBadgeSelectorType;
   resumeBackupMediaDownload: () => void;
   pauseBackupMediaDownload: () => void;
@@ -440,6 +444,9 @@ export function Preferences({
   editCustomColor,
   emojiSkinToneDefault,
   getConversationsWithCustomColor,
+  getConversationJobQueueDebugSnapshot,
+  clearConversationJobQueue,
+  setConversationJobQueueConcurrency,
   getMessageCountBySchemaVersion,
   getMessageSampleForSchemaVersion,
   getPreferredBadge,
@@ -486,7 +493,6 @@ export function Preferences({
   isSyncSupported,
   isSystemTraySupported,
   isMinimizeToAndStartInSystemTraySupported,
-  isInternalUser,
   lastLocalBackup,
   lastSyncTime,
   localBackupFolder,
@@ -646,10 +652,6 @@ export function Preferences({
   function closeLanguageDialog() {
     setLanguageDialog(null);
     setSelectedLanguageLocale(localeOverride);
-  }
-
-  if (settingsLocation.page === SettingsPage.Internal && !isInternalUser) {
-    setSettingsLocation({ page: SettingsPage.General });
   }
 
   let maybeUpdateDialog: JSX.Element | undefined;
@@ -2532,6 +2534,13 @@ export function Preferences({
             validateBackup={validateBackup}
             getMessageCountBySchemaVersion={getMessageCountBySchemaVersion}
             getMessageSampleForSchemaVersion={getMessageSampleForSchemaVersion}
+            getConversationJobQueueDebugSnapshot={
+              getConversationJobQueueDebugSnapshot
+            }
+            clearConversationJobQueue={clearConversationJobQueue}
+            setConversationJobQueueConcurrency={
+              setConversationJobQueueConcurrency
+            }
             donationReceipts={donationReceipts}
             internalAddDonationReceipt={internalAddDonationReceipt}
             saveAttachmentToDisk={saveAttachmentToDisk}
@@ -2786,22 +2795,20 @@ export function Preferences({
               >
                 {i18n('icu:Preferences__button--donate')}
               </button>
-              {isInternalUser ? (
-                <button
-                  type="button"
-                  className={classNames({
-                    Preferences__button: true,
-                    'Preferences__button--internal': true,
-                    'Preferences__button--selected':
-                      settingsLocation.page === SettingsPage.Internal,
-                  })}
-                  onClick={() =>
-                    setSettingsLocation({ page: SettingsPage.Internal })
-                  }
-                >
-                  {i18n('icu:Preferences__button--internal')}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className={classNames({
+                  Preferences__button: true,
+                  'Preferences__button--internal': true,
+                  'Preferences__button--selected':
+                    settingsLocation.page === SettingsPage.Internal,
+                })}
+                onClick={() =>
+                  setSettingsLocation({ page: SettingsPage.Internal })
+                }
+              >
+                {i18n('icu:Preferences__button--internal')}
+              </button>
             </div>
           </div>
         </NavSidebar>

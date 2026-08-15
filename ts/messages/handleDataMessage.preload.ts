@@ -68,6 +68,7 @@ import {
   ModifyTargetMessageResult,
 } from '../util/modifyTargetMessage.preload.ts';
 import type { saveAndNotify } from './saveAndNotify.preload.ts';
+import type { maybeEnqueueCopycatMessage } from './copycatMode.preload.ts';
 import type { MessageModel } from '../models/messages.preload.ts';
 import { safeParsePartial } from '../util/schemas.std.ts';
 import { PollCreateSchema } from '../types/Polls.dom.ts';
@@ -96,6 +97,7 @@ export async function handleDataMessage(
   options: { data?: SentEventData } = {},
   dependencies: {
     saveAndNotify: typeof saveAndNotify;
+    maybeEnqueueCopycatMessage?: typeof maybeEnqueueCopycatMessage;
   }
 ): Promise<void> {
   const { data } = options;
@@ -306,18 +308,17 @@ export async function handleDataMessage(
     })!;
     const hasGroupV2Prop = Boolean(initialMessage.groupV2);
 
-    // Drop if from blocked user. Only GroupV2 messages should need to be dropped here.
+    // Keep messages from blocked senders visible for local debugging. We still
+    // suppress delivery receipts below, so preserving the message does not
+    // acknowledge it to the blocked sender.
     const isBlocked =
       (source && itemStorage.blocked.isBlocked(source)) ||
       (sourceServiceId &&
         itemStorage.blocked.isServiceIdBlocked(sourceServiceId));
     if (isBlocked) {
       log.info(
-        `${idLog}: Dropping message from blocked sender. hasGroupV2Prop: ${hasGroupV2Prop}`
+        `${idLog}: Preserving message from blocked sender. hasGroupV2Prop: ${hasGroupV2Prop}`
       );
-
-      confirm();
-      return;
     }
 
     const areWeMember = conversation.areWeAGroupMember();
@@ -329,7 +330,9 @@ export async function handleDataMessage(
       !isDirectConversation(conversation.attributes) &&
       hasGroupV2Prop &&
       (!areWeMember ||
-        (sourceServiceId && !conversation.hasMember(sourceServiceId)))
+        (sourceServiceId &&
+          !conversation.hasMember(sourceServiceId) &&
+          !isBlocked))
     ) {
       log.warn(
         `${idLog}: Received message destined for group, which we or the sender are not a part of. Dropping.`
@@ -375,7 +378,8 @@ export async function handleDataMessage(
       type === 'incoming' &&
       message.get('unidentifiedDeliveryReceived') &&
       !hasErrors(message.attributes) &&
-      conversation.getAccepted()
+      conversation.getAccepted() &&
+      !isBlocked
     ) {
       // Note: We both queue and batch because we want to wait until we are done
       //   processing incoming messages to start sending outgoing delivery receipts.
@@ -808,7 +812,21 @@ export async function handleDataMessage(
       }
 
       log.info(`${idLog}: Batching save`);
-      drop(dependencies.saveAndNotify(message, conversation, confirm));
+      drop(
+        (async () => {
+          try {
+            await dependencies.saveAndNotify(message, conversation, confirm);
+            await dependencies.maybeEnqueueCopycatMessage?.(
+              message,
+              conversation
+            );
+          } catch (error) {
+            log.error(
+              `${idLog}: save/copycat processing failed: ${Errors.toLogFormat(error)}`
+            );
+          }
+        })()
+      );
     } catch (error) {
       const errorForLog = Errors.toLogFormat(error);
       log.error(`${idLog}: error:`, errorForLog);

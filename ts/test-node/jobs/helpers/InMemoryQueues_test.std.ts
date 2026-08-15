@@ -21,6 +21,17 @@ describe('InMemoryQueues', () => {
       assert.strictEqual(queue.concurrency, 1);
     });
 
+    it('updates the concurrency of existing and future queues', () => {
+      const queues = new InMemoryQueues();
+      const existingQueue = queues.get('existing');
+
+      queues.concurrency = 4;
+
+      assert.strictEqual(queues.concurrency, 4);
+      assert.strictEqual(existingQueue.concurrency, 4);
+      assert.strictEqual(queues.get('future').concurrency, 4);
+    });
+
     it('cleans up the queues when all tasks have run', async () => {
       const queues = new InMemoryQueues();
 

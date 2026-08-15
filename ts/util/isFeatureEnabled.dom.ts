@@ -28,7 +28,7 @@ export function isFeaturedEnabledSelector({
   return _isFeatureEnabledInner({
     betaValue: remoteConfig?.[betaKey]?.value,
     currentVersion,
-    isInternalUser: remoteConfig?.['desktop.internalUser']?.enabled ?? false,
+    isInternalUser: true,
     prodValue: remoteConfig?.[prodKey]?.value,
   });
 }

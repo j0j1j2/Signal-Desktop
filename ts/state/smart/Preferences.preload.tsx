@@ -122,8 +122,45 @@ import { isLocalBackupsEnabled } from '../../util/isLocalBackupsEnabled.preload.
 import { getBackupKeyHash } from '../../services/backups/crypto.preload.ts';
 import { Emoji } from '../../axo/emoji.std.ts';
 import { AppProvider } from '../../windows/AppProvider.dom.tsx';
+import { conversationJobQueue } from '../../jobs/conversationJobQueue.preload.ts';
+import { getMessageById } from '../../messages/getMessageById.preload.ts';
+import {
+  markFailed,
+  saveErrorsOnMessage,
+} from '../../test-node/util/messageFailures.preload.ts';
 
 const DEFAULT_NOTIFICATION_SETTING = 'message';
+
+async function clearConversationJobQueue(
+  conversationId?: string
+): Promise<number> {
+  const result = await conversationJobQueue.cancelPendingJobs(conversationId);
+  const cancellationError = new Error(
+    'Canceled from the internal conversationJobQueue debugger'
+  );
+
+  const SAVE_BATCH_SIZE = 100;
+  for (
+    let index = 0;
+    index < result.normalMessageIds.length;
+    index += SAVE_BATCH_SIZE
+  ) {
+    const batch = result.normalMessageIds.slice(index, index + SAVE_BATCH_SIZE);
+    // oxlint-disable-next-line no-await-in-loop
+    await Promise.all(
+      batch.map(async messageId => {
+        const message = await getMessageById(messageId);
+        if (!message) {
+          return;
+        }
+        markFailed(message);
+        await saveErrorsOnMessage(message, cancellationError);
+      })
+    );
+  }
+
+  return result.canceledJobCount;
+}
 
 function renderUpdateDialog(
   props: Readonly<{ containerWidthBreakpoint: WidthBreakpoint }>
@@ -615,8 +652,7 @@ export function SmartPreferences(): JSX.Element | null {
 
   const emojiSkinToneDefault =
     items.emojiSkinToneDefault ?? Emoji.SkinTone.None;
-  const isInternalUser =
-    items.remoteConfig?.['desktop.internalUser']?.enabled ?? false;
+  const isInternalUser = true;
   const isContentProtectionSupported =
     Settings.isContentProtectionSupported(OS);
   const isContentProtectionNeeded = Settings.isContentProtectionNeeded(OS);
@@ -936,6 +972,13 @@ export function SmartPreferences(): JSX.Element | null {
         }
         getMessageSampleForSchemaVersion={
           DataReader.getMessageSampleForSchemaVersion
+        }
+        getConversationJobQueueDebugSnapshot={() =>
+          conversationJobQueue.getDebugSnapshot()
+        }
+        clearConversationJobQueue={clearConversationJobQueue}
+        setConversationJobQueueConcurrency={concurrency =>
+          conversationJobQueue.setDebugConcurrency(concurrency)
         }
         getPreferredBadge={getPreferredBadge}
         hasAnyCurrentCustomChatFolders={hasAnyCurrentCustomChatFolders}

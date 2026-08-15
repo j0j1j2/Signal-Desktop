@@ -273,6 +273,7 @@ import {
 } from './util/onDeviceNameChangeSync.preload.ts';
 import { postSaveUpdates } from './util/cleanup.preload.ts';
 import { handleDataMessage } from './messages/handleDataMessage.preload.ts';
+import { maybeEnqueueCopycatMessage } from './messages/copycatMode.preload.ts';
 import { MessageModel } from './models/messages.preload.ts';
 import { waitForEvent } from './shims/events.dom.ts';
 import { sendSyncRequests } from './textsecure/syncRequests.preload.ts';
@@ -2784,7 +2785,7 @@ async function startApp(): Promise<void> {
         data.message,
         event.confirm,
         {},
-        { saveAndNotify }
+        { saveAndNotify, maybeEnqueueCopycatMessage }
       )
     );
   }
@@ -3344,7 +3345,7 @@ async function startApp(): Promise<void> {
         {
           data,
         },
-        { saveAndNotify }
+        { saveAndNotify, maybeEnqueueCopycatMessage }
       )
     );
   }

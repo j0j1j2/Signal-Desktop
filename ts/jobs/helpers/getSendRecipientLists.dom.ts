@@ -14,6 +14,7 @@ export type SendRecipientLists = Readonly<{
 }>;
 
 export type GetSendRecipientListsOptions = Readonly<{
+  allowBlocked?: boolean;
   log: LoggerType;
   conversationIds: ReadonlyArray<string>;
   conversation: ConversationModel;
@@ -22,7 +23,7 @@ export type GetSendRecipientListsOptions = Readonly<{
 export function getSendRecipientLists(
   options: GetSendRecipientListsOptions
 ): SendRecipientLists {
-  const { log, conversationIds, conversation } = options;
+  const { allowBlocked = false, log, conversationIds, conversation } = options;
 
   const allRecipientServiceIds: Array<ServiceIdString> = [];
   const recipientServiceIdsWithoutMe: Array<ServiceIdString> = [];
@@ -74,7 +75,7 @@ export function getSendRecipientLists(
       continue;
     }
 
-    if (recipient.isBlocked()) {
+    if (recipient.isBlocked() && !allowBlocked) {
       log.warn(`${logPrefix}: Recipient is blocked, dropping`);
       continue;
     }

@@ -29,10 +29,14 @@ import type { Emoji } from '../axo/emoji.std.ts';
 const log = createLogger('enqueueReactionForSend');
 
 export async function enqueueReactionForSend({
+  allowBlocked = false,
+  dontEnableProfileSharing = false,
   emoji,
   messageId,
   remove,
 }: Readonly<{
+  allowBlocked?: boolean;
+  dontEnableProfileSharing?: boolean;
   emoji: Emoji.Variant;
   messageId: string;
   remove: boolean;
@@ -73,12 +77,14 @@ export async function enqueueReactionForSend({
     !isMessageAStory ||
     isDirectConversation(messageConversation.attributes)
   ) {
-    log.info('Enabling profile sharing for reaction send');
-    if (!messageConversation.get('profileSharing')) {
-      messageConversation.set({ profileSharing: true });
-      await DataWriter.updateConversation(messageConversation.attributes);
+    if (!dontEnableProfileSharing) {
+      log.info('Enabling profile sharing for reaction send');
+      if (!messageConversation.get('profileSharing')) {
+        messageConversation.set({ profileSharing: true });
+        await DataWriter.updateConversation(messageConversation.attributes);
+      }
+      await messageConversation.restoreContact();
     }
-    await messageConversation.restoreContact();
   }
 
   const targetConversation =
@@ -126,6 +132,7 @@ export async function enqueueReactionForSend({
   }
 
   const reaction: ReactionAttributesType = {
+    allowBlocked,
     envelopeId: generateUuid(),
     removeFromMessageReceiverCache: noop,
     emoji,

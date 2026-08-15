@@ -15,6 +15,7 @@ import type { SettingsLocation } from '../types/Nav.std.ts';
 import { SettingsPage } from '../types/Nav.std.ts';
 import { PreferencesDonateFlow } from './PreferencesDonateFlow.dom.tsx';
 import type {
+  DonationCurrencyRecommendation,
   DonationWorkflow,
   DonationReceipt,
   OneTimeDonationHumanAmounts,
@@ -80,6 +81,7 @@ export type PropsDataType = {
   firstName: string | undefined;
   profileAvatarUrl?: string;
   donationAmountsConfig: ReadonlyDeep<OneTimeDonationHumanAmounts> | undefined;
+  donationCurrencyRecommendation: DonationCurrencyRecommendation | undefined;
   validCurrencies: ReadonlyArray<string>;
   donationReceipts: ReadonlyArray<DonationReceipt>;
   theme: ThemeType;
@@ -562,6 +564,7 @@ export function PreferencesDonations({
   firstName,
   profileAvatarUrl,
   donationAmountsConfig,
+  donationCurrencyRecommendation,
   validCurrencies,
   donationReceipts,
   theme,
@@ -753,6 +756,7 @@ export function PreferencesDonations({
           isOnline={isOnline}
           initialCurrency={initialCurrency}
           donationAmountsConfig={donationAmountsConfig}
+          donationCurrencyRecommendation={donationCurrencyRecommendation}
           lastError={lastError}
           validCurrencies={validCurrencies}
           workflow={workflow}

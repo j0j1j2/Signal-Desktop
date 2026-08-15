@@ -4904,6 +4904,21 @@
   "icu:ConversationDetails--disappearing-messages-info--direct": {
     "messageformat": "이 기능을 켜면, 일대일 채팅에서 주고받은 메시지는 확인 후 자동으로 삭제됩니다."
   },
+  "icu:ConversationDetails--copycat-mode-label": {
+    "messageformat": "따라쟁이 모드"
+  },
+  "icu:ConversationDetails--copycat-mode-info--direct": {
+    "messageformat": "이 사람이 보낸 텍스트, 미디어, 스티커와 반응을 자동 반복합니다. 텍스트와 미디어에는 [이름]: 메시지 표시가 붙습니다."
+  },
+  "icu:ConversationDetails--copycat-mode-info--group": {
+    "messageformat": "선택한 멤버가 보낸 텍스트, 미디어, 스티커와 반응을 자동 반복합니다. 텍스트와 미디어에는 [이름]: 메시지 표시가 붙습니다."
+  },
+  "icu:ConversationDetails--copycat-mode-off": {
+    "messageformat": "끔"
+  },
+  "icu:ConversationDetails--copycat-mode-select-label": {
+    "messageformat": "따라 할 멤버 선택"
+  },
   "icu:ConversationDetails--nickname-label": {
     "messageformat": "별칭"
   },
@@ -7924,6 +7939,15 @@
   },
   "icu:DonateFlow__continue": {
     "messageformat": "계속"
+  },
+  "icu:DonateFlow__cheapest-currency-title": {
+    "messageformat": "현재 환율 기준 최소 후원액이 가장 낮은 통화"
+  },
+  "icu:DonateFlow__cheapest-currency-amount": {
+    "messageformat": "{currency} {minimum} ≈ {convertedMinimum}"
+  },
+  "icu:DonateFlow__cheapest-currency-note": {
+    "messageformat": "{rateDate} 기준 환율입니다. 실제 카드사 환전 수수료에 따라 달라질 수 있습니다. 눌러서 이 통화를 선택하세요."
   },
   "icu:DonationReceipt__title": {
     "messageformat": "후원 영수증"

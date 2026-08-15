@@ -1,7 +1,7 @@
 // Copyright 2025 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { memo, useEffect, useCallback, useMemo } from 'react';
+import { memo, useEffect, useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import type { MutableRefObject } from 'react';
@@ -12,6 +12,7 @@ import { PreferencesDonations } from '../../components/PreferencesDonations.dom.
 import type { SettingsLocation } from '../../types/Nav.std.ts';
 import { useDonationsActions } from '../ducks/donations.preload.ts';
 import type { StateType } from '../reducer.preload.ts';
+import type { DonationCurrencyRecommendation } from '../../types/Donations.std.ts';
 import { useConversationsActions } from '../ducks/conversations.preload.ts';
 import { generateDonationReceiptBlob } from '../../util/generateDonationReceipt.dom.ts';
 import { useToastActions } from '../ducks/toast.preload.ts';
@@ -38,6 +39,10 @@ import {
   getDonationConfigCache,
   getDonationsState,
 } from '../selectors/donations.std.ts';
+import { getCheapestDonationCurrency } from '../../util/donationExchangeRates.std.ts';
+import { getDonationExchangeRates } from '../../textsecure/WebAPI.preload.ts';
+import { MINUTE } from '../../util/durations/index.std.ts';
+import { toLogFormat } from '../../types/errors.std.ts';
 
 const log = createLogger('SmartPreferencesDonations');
 
@@ -118,6 +123,59 @@ export const SmartPreferencesDonations = memo(
     const initialCurrency = validCurrencies.includes(currencyFromPhone)
       ? currencyFromPhone
       : 'usd';
+
+    const [donationCurrencyRecommendation, setDonationCurrencyRecommendation] =
+      useState<DonationCurrencyRecommendation | undefined>();
+
+    useEffect(() => {
+      if (!isOnline || donationAmountsConfig == null) {
+        setDonationCurrencyRecommendation(undefined);
+        return;
+      }
+
+      let isCancelled = false;
+
+      const refreshRecommendation = async () => {
+        try {
+          const exchangeRates = await getDonationExchangeRates({
+            baseCurrency: initialCurrency,
+            currencies: validCurrencies,
+          });
+          const recommendation = getCheapestDonationCurrency({
+            baseCurrency: initialCurrency,
+            donationAmountsConfig,
+            exchangeRates,
+          });
+
+          if (!isCancelled) {
+            setDonationCurrencyRecommendation(recommendation);
+          }
+          log.info(
+            `Loaded ${exchangeRates.length} donation exchange rates; ` +
+              `recommendation=${recommendation?.currency ?? 'none'}`
+          );
+        } catch (error) {
+          log.warn(
+            `Failed to load donation exchange rates: ${toLogFormat(error)}`
+          );
+          if (!isCancelled) {
+            setDonationCurrencyRecommendation(undefined);
+          }
+        }
+      };
+
+      drop(refreshRecommendation());
+      const interval = setInterval(
+        () => drop(refreshRecommendation()),
+        15 * MINUTE
+      );
+
+      return () => {
+        isCancelled = true;
+        clearInterval(interval);
+      };
+    }, [donationAmountsConfig, initialCurrency, isOnline, validCurrencies]);
+
     // Load badge data on mount
     useEffect(() => {
       drop(fetchBadgeData());
@@ -134,6 +192,7 @@ export const SmartPreferencesDonations = memo(
         saveAttachmentToDisk={saveAttachmentToDisk}
         generateDonationReceiptBlob={generateDonationReceiptBlob}
         donationAmountsConfig={donationAmountsConfig}
+        donationCurrencyRecommendation={donationCurrencyRecommendation}
         validCurrencies={validCurrencies}
         showToast={showToast}
         contentsRef={contentsRef}

@@ -73,7 +73,8 @@ export type ShouldSendToDirectConversationResult =
   | readonly [ok: false, refusal: DirectConversationSendRefusalType];
 
 export function shouldSendToDirectConversation(
-  conversation: ConversationForDirectSendType
+  conversation: ConversationForDirectSendType,
+  { allowBlocked = false }: { allowBlocked?: boolean } = {}
 ): ShouldSendToDirectConversationResult {
   if (!isConversationAccepted(conversation.attributes)) {
     return [
@@ -95,7 +96,7 @@ export function shouldSendToDirectConversation(
     ];
   }
 
-  if (conversation.isBlocked()) {
+  if (conversation.isBlocked() && !allowBlocked) {
     return [
       false,
       {

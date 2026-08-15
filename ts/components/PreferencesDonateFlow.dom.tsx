@@ -17,6 +17,7 @@ import {
 } from '../types/Donations.std.ts';
 import type {
   CardDetail,
+  DonationCurrencyRecommendation,
   DonationErrorType,
   DonationStateType,
   HumanDonationAmount,
@@ -82,6 +83,7 @@ export type PropsDataType = {
   initialCurrency: string;
   isOnline: boolean;
   donationAmountsConfig: ReadonlyDeep<OneTimeDonationHumanAmounts> | undefined;
+  donationCurrencyRecommendation: DonationCurrencyRecommendation | undefined;
   lastError: DonationErrorType | undefined;
   validCurrencies: ReadonlyArray<string>;
   workflow: DonationWorkflow | undefined;
@@ -119,6 +121,7 @@ export function PreferencesDonateFlow({
   initialCurrency,
   isOnline,
   donationAmountsConfig,
+  donationCurrencyRecommendation,
   lastError,
   validCurrencies,
   workflow,
@@ -385,6 +388,7 @@ export function PreferencesDonateFlow({
           initialCurrency={currency}
           isOnline={isOnline}
           donationAmountsConfig={donationAmountsConfig}
+          donationCurrencyRecommendation={donationCurrencyRecommendation}
           validCurrencies={validCurrencies}
           onChangeCurrency={handleAmountPickerCurrencyChanged}
           onSubmit={handleAmountPickerResult}
@@ -551,6 +555,7 @@ type AmountPickerProps = {
   initialCurrency: string | undefined;
   isOnline: boolean;
   donationAmountsConfig: ReadonlyDeep<OneTimeDonationHumanAmounts> | undefined;
+  donationCurrencyRecommendation: DonationCurrencyRecommendation | undefined;
   validCurrencies: ReadonlyArray<string>;
   onChangeCurrency: (value: string) => void;
   onSubmit: (result: AmountPickerResult) => void;
@@ -558,6 +563,7 @@ type AmountPickerProps = {
 
 function AmountPicker({
   donationAmountsConfig,
+  donationCurrencyRecommendation,
   i18n,
   initialAmount,
   initialCurrency = 'usd',
@@ -720,6 +726,36 @@ function AmountPicker({
     setCustomAmount(value);
   }, []);
 
+  const recommendationContent = useMemo(() => {
+    if (donationCurrencyRecommendation == null) {
+      return undefined;
+    }
+
+    const {
+      baseCurrency,
+      convertedMinimumAmount,
+      currency: recommendedCurrency,
+      minimumAmount: recommendedMinimumAmount,
+      rateDate,
+    } = donationCurrencyRecommendation;
+
+    return {
+      convertedMinimum: toHumanCurrencyString({
+        amount: convertedMinimumAmount,
+        currency: baseCurrency,
+        symbol: 'narrowSymbol',
+      }),
+      currency: recommendedCurrency.toUpperCase(),
+      currencyValue: recommendedCurrency,
+      minimum: toHumanCurrencyString({
+        amount: recommendedMinimumAmount,
+        currency: recommendedCurrency,
+        symbol: 'narrowSymbol',
+      }),
+      rateDate,
+    };
+  }, [donationCurrencyRecommendation]);
+
   const amount = parsedCustomAmount ?? presetAmount;
   const isContinueEnabled = isOnline && currency != null && amount != null;
 
@@ -810,6 +846,31 @@ function AmountPicker({
         onChange={handleCurrencyChanged}
         value={currency}
       />
+      {recommendationContent ? (
+        <button
+          className="DonationAmountPicker__CurrencyRecommendation"
+          onClick={() =>
+            handleCurrencyChanged(recommendationContent.currencyValue)
+          }
+          type="button"
+        >
+          <span className="DonationAmountPicker__CurrencyRecommendationTitle">
+            {i18n('icu:DonateFlow__cheapest-currency-title')}
+          </span>
+          <strong>
+            {i18n('icu:DonateFlow__cheapest-currency-amount', {
+              convertedMinimum: recommendationContent.convertedMinimum,
+              currency: recommendationContent.currency,
+              minimum: recommendationContent.minimum,
+            })}
+          </strong>
+          <span className="DonationAmountPicker__CurrencyRecommendationNote">
+            {i18n('icu:DonateFlow__cheapest-currency-note', {
+              rateDate: recommendationContent.rateDate,
+            })}
+          </span>
+        </button>
+      ) : null}
       <div className="PreferencesDonations__section-header PreferencesDonations__section-header--donate-flow">
         {i18n('icu:DonateFlow__make-a-one-time-donation')}
       </div>

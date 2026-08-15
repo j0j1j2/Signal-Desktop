@@ -55,7 +55,9 @@ export async function sendReaction(
   }: ConversationQueueJobBundle,
   data: ReactionJobData
 ): Promise<void> {
-  const { messageId, revision } = data;
+  const { allowBlocked = false, messageId, revision } = data;
+  const allowBlockedDirectRecipient =
+    allowBlocked && isDirectConversation(conversation.attributes);
   const ourAci = itemStorage.user.getCheckedAci();
 
   await window.ConversationController.load();
@@ -86,7 +88,10 @@ export async function sendReaction(
     return;
   }
 
-  if (!canReact(message.attributes, ourConversationId, findAndFormatContact)) {
+  if (
+    !allowBlockedDirectRecipient &&
+    !canReact(message.attributes, ourConversationId, findAndFormatContact)
+  ) {
     log.info(`could not react to ${messageId}. Removing this pending reaction`);
     markReactionFailed(message, pendingReaction);
     await window.MessageCache.saveMessage(message.attributes);
@@ -129,6 +134,7 @@ export async function sendReaction(
       recipientServiceIdsWithoutMe,
       untrustedServiceIds,
     } = getSendRecipientLists({
+      allowBlocked: allowBlockedDirectRecipient,
       log,
       conversationIds: unsentConversationIds,
       conversation,
@@ -146,9 +152,10 @@ export async function sendReaction(
       );
     }
 
-    const profileKey = conversation.get('profileSharing')
-      ? await ourProfileKeyService.get()
-      : undefined;
+    const profileKey =
+      conversation.get('profileSharing') && !allowBlockedDirectRecipient
+        ? await ourProfileKeyService.get()
+        : undefined;
 
     const { emoji, ...restOfPendingReaction } = pendingReaction;
 
@@ -227,7 +234,9 @@ export async function sendReaction(
     } else {
       let promise: Promise<CallbackResultType>;
       if (isDirectConversation(conversation.attributes)) {
-        const [ok, refusal] = shouldSendToDirectConversation(conversation);
+        const [ok, refusal] = shouldSendToDirectConversation(conversation, {
+          allowBlocked: allowBlockedDirectRecipient,
+        });
         if (!ok) {
           log.info(refusal.logLine);
           markReactionFailed(message, pendingReaction);

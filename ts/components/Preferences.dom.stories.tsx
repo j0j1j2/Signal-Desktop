@@ -279,6 +279,7 @@ function renderDonationsPane(props: {
       firstName={props.me.firstName}
       profileAvatarUrl={props.me.profileAvatarUrl}
       donationAmountsConfig={donationAmountsConfig}
+      donationCurrencyRecommendation={undefined}
       validCurrencies={Object.keys(donationAmountsConfig)}
       donationReceipts={props.donationReceipts}
       saveAttachmentToDisk={props.saveAttachmentToDisk}
@@ -659,6 +660,18 @@ export default {
     },
     cqsTestMode: false,
     setCqsTestMode: action('setCqsTestMode'),
+    getConversationJobQueueDebugSnapshot: async () => ({
+      capturedAt: Date.now(),
+      concurrency: 1,
+      persistedCount: 0,
+      inMemoryPendingCount: 0,
+      runningCount: 0,
+      conversations: [],
+    }),
+    clearConversationJobQueue: async () => 0,
+    setConversationJobQueueConcurrency: action(
+      'setConversationJobQueueConcurrency'
+    ),
     dredDuration: 0,
     setDredDuration: action('setDredDuration'),
     directMaxBitrate: 1000000,

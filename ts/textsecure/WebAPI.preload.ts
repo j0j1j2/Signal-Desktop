@@ -106,6 +106,11 @@ import type {
 import { ToastType } from '../types/Toast.dom.tsx';
 import { isProduction } from '../util/version.std.ts';
 import type { ServerAlert } from '../types/ServerAlert.std.ts';
+import type { DonationExchangeRate } from '../util/donationExchangeRates.std.ts';
+import {
+  getDonationExchangeRatesUrl,
+  parseDonationExchangeRates,
+} from '../util/donationExchangeRates.std.ts';
 import { isAbortError } from '../util/isAbortError.std.ts';
 import { missingCaseError } from '../util/missingCaseError.std.ts';
 import { drop } from '../util/drop.std.ts';
@@ -1137,12 +1142,11 @@ const linkDeviceResultZod = z.object({
 });
 export type LinkDeviceResultType = z.infer<typeof linkDeviceResultZod>;
 
-const subscriptionConfigurationResultZod = z.object({
+export const subscriptionConfigurationResultZod = z.object({
   currencies: z.record(z.string(), subscriptionConfigurationCurrencyZod),
   levels: z.record(
     z.string(),
     z.object({
-      name: z.string(),
       badge: badgeFromServerSchema,
     })
   ),
@@ -2642,6 +2646,31 @@ export async function getSubscriptionConfiguration(): Promise<SubscriptionConfig
     responseType: 'json',
     zodSchema: subscriptionConfigurationResultZod,
   });
+}
+
+export async function getDonationExchangeRates({
+  baseCurrency,
+  currencies,
+}: {
+  baseCurrency: string;
+  currencies: ReadonlyArray<string>;
+}): Promise<ReadonlyArray<DonationExchangeRate>> {
+  const url = getDonationExchangeRatesUrl({ baseCurrency, currencies });
+  if (url == null) {
+    return [];
+  }
+
+  const response = await fetchForLinkPreviews(url.href, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Exchange-rate request failed with HTTP ${response.status}`
+    );
+  }
+
+  const responseBody: unknown = await response.json();
+  return parseDonationExchangeRates(responseBody);
 }
 
 export async function getAvatar(

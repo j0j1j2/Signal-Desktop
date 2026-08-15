@@ -68,7 +68,9 @@ import type { ShowToastAction } from '../../../state/ducks/toast.preload.ts';
 import { ToastType } from '../../../types/Toast.dom.tsx';
 import type { ContactNameColorType } from '../../../types/Colors.std.ts';
 import { AxoConfirmDialog } from '../../../axo/AxoConfirmDialog.dom.tsx';
+import { AxoSwitch } from '../../../axo/AxoSwitch.dom.tsx';
 import { canConversationOnlyBeMutedAlways } from '../../../conversations/canConversationOnlyBeMutedAlways.dom.ts';
+import { Select } from '../../Select.dom.tsx';
 
 enum ModalState {
   AddingGroupMembers,
@@ -88,6 +90,7 @@ export type StateProps = {
   canAddLabel: boolean;
   canAddNewMembers: boolean;
   conversation?: ConversationType;
+  copycatTargetServiceId?: string;
   hasGroupLink: boolean;
   hasMedia: boolean;
   getPreferredBadge: PreferredBadgeSelectorType;
@@ -147,6 +150,7 @@ type ActionProps = {
   saveAvatarToDisk: SaveAvatarToDiskActionType;
   searchInConversation: (id: string) => unknown;
   setDisappearingMessages: (id: string, seconds: DurationInSeconds) => void;
+  setCopycatTarget: (targetServiceId: string | undefined) => void;
   setMuteDuration: (id: string, muteDuration: undefined | number) => unknown;
   showContactModal: (payload: ContactModalStateType) => void;
   showConversation: ShowConversationType;
@@ -184,6 +188,7 @@ export function ConversationDetails({
   canAddLabel,
   canAddNewMembers,
   conversation,
+  copycatTargetServiceId,
   deleteAvatarFromDisk,
   hasGroupLink,
   hasMedia,
@@ -222,6 +227,7 @@ export function ConversationDetails({
   searchInConversation,
   selectedNavTab,
   setDisappearingMessages,
+  setCopycatTarget,
   setMuteDuration,
   showContactModal,
   showConversation,
@@ -260,6 +266,23 @@ export function ConversationDetails({
   const isGroupTerminated = Boolean(conversation.terminated);
   const canTerminateGroup =
     isTerminateGroupEnabled && !isGroupTerminated && isAdmin;
+
+  const directCopycatTargetServiceId = isGroup
+    ? undefined
+    : conversation.serviceId;
+  const copycatTargetOptions = [
+    {
+      text: i18n('icu:ConversationDetails--copycat-mode-off'),
+      value: '',
+    },
+    ...memberships.flatMap(({ member }) => {
+      if (member.isMe || member.serviceId == null) {
+        return [];
+      }
+
+      return [{ text: member.title, value: member.serviceId }];
+    }),
+  ];
 
   const onCloseModal = useCallback(() => {
     setModalState(ModalState.NothingOpen);
@@ -623,6 +646,55 @@ export function ConversationDetails({
               }
             />
           ) : null}
+          {!conversation.isMe && (
+            <PanelRow
+              icon={
+                <ConversationDetailsIcon
+                  ariaLabel={i18n(
+                    'icu:ConversationDetails--copycat-mode-label'
+                  )}
+                  icon={IconType.mention}
+                />
+              }
+              info={
+                isGroup
+                  ? i18n('icu:ConversationDetails--copycat-mode-info--group')
+                  : i18n('icu:ConversationDetails--copycat-mode-info--direct')
+              }
+              label={i18n('icu:ConversationDetails--copycat-mode-label')}
+              right={
+                isGroup ? (
+                  <Select
+                    ariaLabel={i18n(
+                      'icu:ConversationDetails--copycat-mode-select-label'
+                    )}
+                    disabled={conversation.terminated}
+                    options={copycatTargetOptions}
+                    value={copycatTargetServiceId ?? ''}
+                    onChange={value => {
+                      setCopycatTarget(value || undefined);
+                    }}
+                  />
+                ) : (
+                  <AxoSwitch.Root
+                    checked={
+                      directCopycatTargetServiceId != null &&
+                      copycatTargetServiceId === directCopycatTargetServiceId
+                    }
+                    disabled={
+                      directCopycatTargetServiceId == null ||
+                      !conversation.acceptedMessageRequest
+                    }
+                    onCheckedChange={checked => {
+                      setCopycatTarget(
+                        checked ? directCopycatTargetServiceId : undefined
+                      );
+                    }}
+                  />
+                )
+              }
+            />
+          )}
           {canHaveNicknameAndNote(conversation) && (
             <PanelRow
               icon={

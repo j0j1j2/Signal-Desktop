@@ -70,6 +70,11 @@ export async function maybeNotify(args: MaybeNotifyArgs): Promise<void> {
   const { i18n } = window.SignalContext;
 
   const { conversation } = args;
+  const messageAuthor = 'message' in args ? getAuthor(args.message) : undefined;
+  if (conversation.isBlocked() || messageAuthor?.isBlocked()) {
+    return;
+  }
+
   const reaction = 'reaction' in args ? args.reaction : undefined;
   const pollVote = 'pollVote' in args ? args.pollVote : undefined;
 

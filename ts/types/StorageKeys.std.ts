@@ -178,6 +178,7 @@ export type StorageAccessType = {
   emojiSkinToneDefault: Emoji.SkinTone;
   unreadCount: number;
   'challenge:conversations': ReadonlyArray<RegisteredChallengeType>;
+  copycatTargetByConversationId: Readonly<Record<string, ServiceIdString>>;
 
   deviceNameEncrypted: boolean;
   'indexeddb-delete-needed': boolean;
@@ -497,6 +498,7 @@ const STORAGE_KEYS_TO_REMOVE_AFTER_UNLINK = [
   'lastReceivedAtCounter',
   'unreadCount',
   'challenge:conversations',
+  'copycatTargetByConversationId',
   'deviceNameEncrypted',
   'indexeddb-delete-needed',
   'senderCertificate',

@@ -55,6 +55,11 @@ import { getCanAddLabel } from '../../types/GroupMemberLabels.std.ts';
 import { useToastActions } from '../ducks/toast.preload.ts';
 import { useNavActions } from '../ducks/nav.std.ts';
 import { NavTab, SettingsPage } from '../../types/Nav.std.ts';
+import { useItemsActions } from '../ducks/items.preload.ts';
+import {
+  isServiceIdString,
+  type ServiceIdString,
+} from '../../types/ServiceId.std.ts';
 
 const { sortBy } = lodash;
 
@@ -158,6 +163,7 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
     toggleSafetyNumberModal,
   } = useGlobalModalActions();
   const { showToast } = useToastActions();
+  const { putItem } = useItemsActions();
 
   const conversation = conversationSelector(conversationId);
   assertDev(
@@ -242,6 +248,27 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
     });
   }, [changeLocation]);
 
+  const copycatTargetServiceId =
+    items.copycatTargetByConversationId?.[conversationId];
+  const setCopycatTarget = useCallback(
+    (targetServiceId: string | undefined) => {
+      const nextTargets: Record<string, ServiceIdString> = {
+        ...items.copycatTargetByConversationId,
+      };
+
+      if (targetServiceId == null) {
+        delete nextTargets[conversationId];
+      } else if (isServiceIdString(targetServiceId)) {
+        nextTargets[conversationId] = targetServiceId;
+      } else {
+        throw new Error('Copycat target must be a valid service ID');
+      }
+
+      putItem('copycatTargetByConversationId', nextTargets);
+    },
+    [conversationId, items.copycatTargetByConversationId, putItem]
+  );
+
   const [hasMedia, setHasMedia] = useState(false);
 
   useEffect(() => {
@@ -274,6 +301,7 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
       canAddNewMembers={canAddNewMembers}
       canEditGroupInfo={canEditGroupInfo}
       conversation={conversationWithColorAttributes}
+      copycatTargetServiceId={copycatTargetServiceId}
       deleteAvatarFromDisk={deleteAvatarFromDisk}
       getPreferredBadge={getPreferredBadge}
       getProfilesForConversation={getProfilesForConversation}
@@ -312,6 +340,7 @@ export const SmartConversationDetails = memo(function SmartConversationDetails({
       searchInConversation={searchInConversation}
       selectedNavTab={selectedNavTab}
       setDisappearingMessages={setDisappearingMessages}
+      setCopycatTarget={setCopycatTarget}
       setMuteDuration={setMuteDuration}
       showContactModal={showContactModal}
       showConversation={showConversation}

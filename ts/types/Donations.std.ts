@@ -276,3 +276,11 @@ export const oneTimeDonationAmountsZod = z.record(
 export type OneTimeDonationHumanAmounts = z.infer<
   typeof oneTimeDonationAmountsZod
 >;
+
+export type DonationCurrencyRecommendation = Readonly<{
+  currency: string;
+  minimumAmount: HumanDonationAmount;
+  baseCurrency: string;
+  convertedMinimumAmount: HumanDonationAmount;
+  rateDate: string;
+}>;

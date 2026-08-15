@@ -11,6 +11,7 @@ import type { MessageModel } from '../../models/messages.preload.ts';
 import { getMessageById } from '../../messages/getMessageById.preload.ts';
 import type { ConversationModel } from '../../models/conversations.preload.ts';
 import {
+  isDirectConversation,
   isGroup,
   isGroupV2,
   isMe,
@@ -81,6 +82,7 @@ import type { SignalService } from '../../protobuf/index.std.ts';
 import { eraseMessageContents } from '../../util/cleanup.preload.ts';
 import { shouldSendToDirectConversation } from './shouldSendToConversation.preload.ts';
 import { shouldEraseViewOnceMedia } from '../../util/viewOnceRetention.std.ts';
+import { isCopycatMessageBody } from '../../util/copycatMode.std.ts';
 
 const { isNumber } = lodash;
 
@@ -148,6 +150,9 @@ export async function sendNormalMessage(
   });
   // The timestamp for the thing we're sending now, whether a first send or an edit
   const targetTimestamp = editedMessageTimestamp || messageTimestamp;
+  const allowBlockedDirectRecipient =
+    isDirectConversation(conversation.attributes) &&
+    isCopycatMessageBody(message.get('body'));
   // The timestamp identifying the target of this edit; could be the original timestamp
   //   or the most recent edit prior to this one
   const targetOfThisEditTimestamp = getTargetOfThisEditTimestamp({
@@ -182,7 +187,7 @@ export async function sendNormalMessage(
   }
 
   let profileKey: Uint8Array<ArrayBuffer> | undefined;
-  if (conversation.get('profileSharing')) {
+  if (conversation.get('profileSharing') && !allowBlockedDirectRecipient) {
     profileKey = await ourProfileKeyService.get();
   }
 
@@ -199,6 +204,7 @@ export async function sendNormalMessage(
       message,
       conversation,
       targetTimestamp,
+      allowBlockedDirectRecipient,
     });
 
     if (untrustedServiceIds.length) {
@@ -385,7 +391,9 @@ export async function sendNormalMessage(
           }
         );
       } else {
-        const [ok, refusal] = shouldSendToDirectConversation(conversation);
+        const [ok, refusal] = shouldSendToDirectConversation(conversation, {
+          allowBlocked: allowBlockedDirectRecipient,
+        });
         if (!ok) {
           log.info(refusal.logLine);
           void markMessageFailed({
@@ -510,11 +518,13 @@ function getMessageRecipients({
   conversation,
   message,
   targetTimestamp,
+  allowBlockedDirectRecipient,
 }: Readonly<{
   log: LoggerType;
   conversation: ConversationModel;
   message: MessageModel;
   targetTimestamp: number;
+  allowBlockedDirectRecipient: boolean;
 }>): {
   allRecipientServiceIds: Array<ServiceIdString>;
   recipientServiceIdsWithoutMe: Array<ServiceIdString>;
@@ -568,7 +578,7 @@ function getMessageRecipients({
       if (recipient.isUnregistered()) {
         return;
       }
-      if (recipient.isBlocked()) {
+      if (recipient.isBlocked() && !allowBlockedDirectRecipient) {
         return;
       }
 

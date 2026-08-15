@@ -176,4 +176,54 @@ describe('handleDataMessage', () => {
     assert.strictEqual(saveAndNotify.callCount, 1, 'not saved again');
     assert.strictEqual(confirm.callCount, 2, 'duplicate confirmed immediately');
   });
+
+  it('preserves incoming messages from blocked senders', async () => {
+    const senderAci = generateAci();
+    const conversation = await window.ConversationController.getOrCreateAndWait(
+      senderAci,
+      'private'
+    );
+    const sentAt = Date.now();
+    const saveAndNotify = sinon.stub();
+    const confirm = sinon.stub();
+
+    await itemStorage.blocked.addBlockedServiceId(senderAci);
+    try {
+      await handleDataMessage(
+        new MessageModel({
+          id: uuid(),
+          conversationId: conversation.id,
+          type: 'incoming',
+          sourceServiceId: senderAci,
+          sourceDevice: 1,
+          sent_at: sentAt,
+          timestamp: sentAt,
+          received_at: sentAt,
+        }),
+        {
+          attachments: [],
+          flags: 0,
+          body: 'visible blocked message',
+          expireTimer: DurationInSeconds.fromDays(0),
+          expireTimerVersion: 1,
+          isViewOnce: false,
+          timestamp: sentAt,
+          requiredProtocolVersion:
+            SignalService.DataMessage.ProtocolVersion.CURRENT,
+        },
+        confirm,
+        {},
+        { saveAndNotify }
+      );
+
+      assert.strictEqual(saveAndNotify.callCount, 1, 'message saved');
+      assert.strictEqual(
+        confirm.callCount,
+        0,
+        'confirmation left to save path'
+      );
+    } finally {
+      await itemStorage.blocked.removeBlockedServiceId(senderAci);
+    }
+  });
 });
