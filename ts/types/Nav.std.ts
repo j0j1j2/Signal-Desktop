@@ -67,6 +67,7 @@ export enum NavTab {
 export enum SettingsPage {
   // Accessible through left nav
   Profile = 'Profile',
+  Accounts = 'Accounts',
   General = 'General',
   Donations = 'Donations',
   Appearance = 'Appearance',

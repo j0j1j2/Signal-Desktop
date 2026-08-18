@@ -5908,6 +5908,48 @@
   "icu:Preferences__button--general": {
     "messageformat": "일반 설정"
   },
+  "icu:Preferences__button--accounts": {
+    "messageformat": "계정"
+  },
+  "icu:Preferences__Accounts__Profiles": {
+    "messageformat": "계정 프로필"
+  },
+  "icu:Preferences__Accounts__Description": {
+    "messageformat": "앱을 재시작하지 않고 이 창에서 Signal 계정을 전환합니다."
+  },
+  "icu:Preferences__Accounts__ActiveAccount": {
+    "messageformat": "현재 계정"
+  },
+  "icu:Preferences__Accounts__InactiveAccount": {
+    "messageformat": "비활성 계정"
+  },
+  "icu:Preferences__Accounts__Active": {
+    "messageformat": "사용 중"
+  },
+  "icu:Preferences__Accounts__Switch": {
+    "messageformat": "전환"
+  },
+  "icu:Preferences__Accounts__NewAccountName": {
+    "messageformat": "새 계정 프로필 이름"
+  },
+  "icu:Preferences__Accounts__AccountName": {
+    "messageformat": "계정 이름"
+  },
+  "icu:Preferences__Accounts__AddAccount": {
+    "messageformat": "계정 추가"
+  },
+  "icu:Preferences__Accounts__EditAlias": {
+    "messageformat": "별칭 편집"
+  },
+  "icu:Preferences__Accounts__AliasInputLabel": {
+    "messageformat": "계정 별칭"
+  },
+  "icu:Preferences__Accounts__SaveAlias": {
+    "messageformat": "저장"
+  },
+  "icu:Preferences__Accounts__CancelAlias": {
+    "messageformat": "취소"
+  },
   "icu:Preferences__button--donate": {
     "messageformat": "Signal 후원하기"
   },

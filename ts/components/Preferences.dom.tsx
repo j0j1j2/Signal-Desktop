@@ -46,6 +46,7 @@ import {
 } from './PreferencesUtil.dom.tsx';
 import { PreferencesBackups } from './PreferencesBackups.dom.tsx';
 import { PreferencesInternal } from './PreferencesInternal.dom.tsx';
+import { PreferencesAccounts } from './PreferencesAccounts.dom.tsx';
 import { Avatar, AvatarSize } from './Avatar.dom.tsx';
 import { NavSidebar } from './NavSidebar.dom.tsx';
 import type { SettingsLocation } from '../types/Nav.std.ts';
@@ -817,6 +818,21 @@ export function Preferences({
     content = renderProfileEditor({
       contentsRef: settingsPaneRef,
     });
+  } else if (settingsLocation.page === SettingsPage.Accounts) {
+    content = (
+      <PreferencesContent
+        contents={
+          <PreferencesAccounts
+            activeAccountIdentity={me}
+            badge={badge}
+            i18n={i18n}
+            theme={theme}
+          />
+        }
+        contentsRef={settingsPaneRef}
+        title={i18n('icu:Preferences__button--accounts')}
+      />
+    );
   } else if (settingsLocation.page === SettingsPage.General) {
     const pageContents = (
       <>
@@ -2664,6 +2680,20 @@ export function Preferences({
                   </button>
                 )}
               </div>
+              <button
+                type="button"
+                className={classNames({
+                  Preferences__button: true,
+                  'Preferences__button--accounts': true,
+                  'Preferences__button--selected':
+                    settingsLocation.page === SettingsPage.Accounts,
+                })}
+                onClick={() =>
+                  setSettingsLocation({ page: SettingsPage.Accounts })
+                }
+              >
+                {i18n('icu:Preferences__button--accounts')}
+              </button>
               <button
                 type="button"
                 className={classNames({

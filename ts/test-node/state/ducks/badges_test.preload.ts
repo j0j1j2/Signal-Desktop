@@ -11,6 +11,33 @@ import type { BadgesStateType } from '../../../state/ducks/badges.preload.ts';
 import { actions, reducer } from '../../../state/ducks/badges.preload.ts';
 
 describe('both/state/ducks/badges', () => {
+  describe('updateOrCreate', () => {
+    it('updates visibility metadata for an existing badge', () => {
+      const existing = {
+        ...getFakeBadge({ id: 'donor' }),
+        expiresAt: 100,
+        isVisible: false,
+      };
+      const updated = {
+        ...existing,
+        expiresAt: 200,
+        isVisible: true,
+      };
+      const state: BadgesStateType = { byId: { donor: existing } };
+      const action = {
+        type: 'badges/UPDATE_OR_CREATE',
+        payload: [updated],
+      } as Parameters<typeof reducer>[1];
+
+      const result = reducer(state, action);
+
+      assert.deepInclude(result.byId.donor, {
+        expiresAt: 200,
+        isVisible: true,
+      });
+    });
+  });
+
   describe('badgeImageFileDownloaded', () => {
     const { badgeImageFileDownloaded } = actions;
 

@@ -146,9 +146,7 @@ export function reducer(
         if (existingBadge) {
           newById[badge.id] = {
             ...existingBadge,
-            category: badge.category,
-            name: badge.name,
-            descriptionTemplate: badge.descriptionTemplate,
+            ...badge,
             images,
           };
         } else {

@@ -61,29 +61,42 @@ export type PreferredBadgeSelectorType = (
   conversationBadges: ConversationType['badges']
 ) => undefined | BadgeType;
 
+/** @testexport */
+export function _getPreferredBadge(
+  badgesById: Readonly<Record<string, BadgeType>>,
+  conversationBadges: ConversationType['badges']
+): undefined | BadgeType {
+  // Find the first visible badge. For other people's badges, isVisible will be
+  // unset and the badge is guaranteed to be visible.
+  // For the local user's badges, isVisible will be set and we need to check it.
+  const firstVisibleBadge = conversationBadges.find(conversationBadge =>
+    'isVisible' in conversationBadge ? conversationBadge.isVisible : true
+  );
+
+  if (!firstVisibleBadge) {
+    return undefined;
+  }
+
+  const badge = getOwn(badgesById, firstVisibleBadge.id);
+  if (!badge) {
+    log.error('getPreferredBadgeSelector: conversation badge was not found');
+    return undefined;
+  }
+
+  // Visibility belongs to the conversation's badge reference. The badge
+  // catalog can briefly retain an older value while profile changes sync.
+  // Keep the selected reference authoritative so Avatar does not hide a
+  // badge that this profile has explicitly made visible.
+  if ('isVisible' in firstVisibleBadge && 'isVisible' in badge) {
+    return { ...badge, isVisible: firstVisibleBadge.isVisible };
+  }
+
+  return badge;
+}
+
 export const getPreferredBadgeSelector = createSelector(
   getBadgesById,
   (badgesById): PreferredBadgeSelectorType =>
-    conversationBadges => {
-      // Find the first visible badge. For other people's badges, isVisible will be
-      // unset and the badge is guaranteed to be visible.
-      // For the local user's badges, isVisible will be set and we need to check it.
-      const firstVisibleBadge = conversationBadges.find(conversationBadge =>
-        'isVisible' in conversationBadge ? conversationBadge.isVisible : true
-      );
-
-      if (!firstVisibleBadge) {
-        return undefined;
-      }
-
-      const badge = getOwn(badgesById, firstVisibleBadge.id);
-      if (!badge) {
-        log.error(
-          'getPreferredBadgeSelector: conversation badge was not found'
-        );
-        return undefined;
-      }
-
-      return badge;
-    }
+    conversationBadges =>
+      _getPreferredBadge(badgesById, conversationBadges)
 );

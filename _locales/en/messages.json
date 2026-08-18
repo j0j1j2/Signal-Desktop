@@ -7860,6 +7860,62 @@
     "messageformat": "General",
     "description": "Button to switch the settings view"
   },
+  "icu:Preferences__button--accounts": {
+    "messageformat": "Accounts",
+    "description": "Button to switch to the account profile settings view"
+  },
+  "icu:Preferences__Accounts__Profiles": {
+    "messageformat": "Account profiles",
+    "description": "Header for the list of local Signal account profiles"
+  },
+  "icu:Preferences__Accounts__Description": {
+    "messageformat": "Switch between Signal accounts in this window without restarting the app.",
+    "description": "Description of local Signal account profile switching"
+  },
+  "icu:Preferences__Accounts__ActiveAccount": {
+    "messageformat": "Active account",
+    "description": "Status text for the currently active account profile"
+  },
+  "icu:Preferences__Accounts__InactiveAccount": {
+    "messageformat": "Inactive account",
+    "description": "Status text for an account profile that is not active"
+  },
+  "icu:Preferences__Accounts__Active": {
+    "messageformat": "Active",
+    "description": "Button label for the currently active account profile"
+  },
+  "icu:Preferences__Accounts__Switch": {
+    "messageformat": "Switch",
+    "description": "Button to switch to another account profile"
+  },
+  "icu:Preferences__Accounts__NewAccountName": {
+    "messageformat": "New account profile name",
+    "description": "Accessible label for the new account profile name field"
+  },
+  "icu:Preferences__Accounts__AccountName": {
+    "messageformat": "Account name",
+    "description": "Placeholder for the new account profile name field"
+  },
+  "icu:Preferences__Accounts__AddAccount": {
+    "messageformat": "Add account",
+    "description": "Button to add a local Signal account profile"
+  },
+  "icu:Preferences__Accounts__EditAlias": {
+    "messageformat": "Edit alias",
+    "description": "Button to edit an account profile alias"
+  },
+  "icu:Preferences__Accounts__AliasInputLabel": {
+    "messageformat": "Account alias",
+    "description": "Accessible label for editing an account profile alias"
+  },
+  "icu:Preferences__Accounts__SaveAlias": {
+    "messageformat": "Save",
+    "description": "Button to save an account profile alias"
+  },
+  "icu:Preferences__Accounts__CancelAlias": {
+    "messageformat": "Cancel",
+    "description": "Button to cancel editing an account profile alias"
+  },
   "icu:Preferences__button--donate": {
     "messageformat": "Donate to Signal",
     "description": "Button to switch the settings view"

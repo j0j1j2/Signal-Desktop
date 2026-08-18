@@ -543,6 +543,25 @@ let tempDir: string | undefined;
 let draftDir: string | undefined;
 let downloadsDir: string | undefined;
 let avatarDataDir: string | undefined;
+let activeConfigDir: string | undefined;
+let activeSQL: MainSQL | undefined;
+
+export function setActiveAccount({
+  configDir,
+  sql,
+}: {
+  configDir: string;
+  sql: MainSQL;
+}): void {
+  activeConfigDir = configDir;
+  activeSQL = sql;
+  attachmentsDir = getAttachmentsPath(configDir);
+  stickersDir = getStickersPath(configDir);
+  tempDir = getTempPath(configDir);
+  draftDir = getDraftPath(configDir);
+  downloadsDir = getDownloadsPath(configDir);
+  avatarDataDir = getAvatarsPath(configDir);
+}
 
 export function initialize({
   configDir,
@@ -556,12 +575,7 @@ export function initialize({
   }
   initialized = true;
 
-  attachmentsDir = getAttachmentsPath(configDir);
-  stickersDir = getStickersPath(configDir);
-  tempDir = getTempPath(configDir);
-  draftDir = getDraftPath(configDir);
-  downloadsDir = getDownloadsPath(configDir);
-  avatarDataDir = getAvatarsPath(configDir);
+  setActiveAccount({ configDir, sql });
 
   ipcMain.handle(ERASE_TEMP_KEY, () => {
     strictAssert(tempDir != null, 'not initialized');
@@ -587,10 +601,12 @@ export function initialize({
   ipcMain.handle(
     CLEANUP_ORPHANED_ATTACHMENTS_KEY,
     async (_event, { _block }) => {
+      strictAssert(activeSQL != null, 'not initialized');
+      strictAssert(activeConfigDir != null, 'not initialized');
       const start = Date.now();
       await cleanupOrphanedAttachments({
-        sql,
-        userDataPath: configDir,
+        sql: activeSQL,
+        userDataPath: activeConfigDir,
         _block,
       });
       const duration = Date.now() - start;
@@ -599,8 +615,9 @@ export function initialize({
   );
 
   ipcMain.handle(CLEANUP_DOWNLOADS_KEY, async () => {
+    strictAssert(activeConfigDir != null, 'not initialized');
     const start = Date.now();
-    await deleteStaleDownloads(configDir);
+    await deleteStaleDownloads(activeConfigDir);
     const duration = Date.now() - start;
     log.info(`cleanupDownloads: took ${duration}ms`);
   });

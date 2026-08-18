@@ -25,6 +25,10 @@ import type { ActiveWindowServiceType } from '../services/ActiveWindowService.st
 import type { LocaleEmojiListType } from '../types/emoji.std.ts';
 import { LocaleEmojiListSchema } from '../types/emoji.std.ts';
 import type { HourCyclePreference } from '../types/I18N.std.ts';
+import type {
+  AccountProfile,
+  AccountProfilesSnapshot,
+} from '../types/AccountProfile.std.ts';
 import { MinimalSignalContext } from './minimalContext.preload.ts';
 
 export type MainWindowStatsType = Readonly<{
@@ -78,6 +82,15 @@ export type SignalContextType = {
   timers: Timers;
   Emojify: typeof Emojify;
   getLocalizedEmojiList: (locale: string) => Promise<LocaleEmojiListType>;
+  accountProfiles: {
+    list: () => Promise<AccountProfilesSnapshot>;
+    create: (name: string) => Promise<AccountProfile>;
+    rename: (
+      profileId: string,
+      name: string
+    ) => Promise<AccountProfilesSnapshot>;
+    switch: (profileId: string) => Promise<{ switched: boolean }>;
+  };
 } & MinimalSignalContextType;
 
 const emojiListCache = new Map<string, LocaleEmojiListType>();
@@ -92,6 +105,15 @@ export const SignalContext: SignalContextType = {
   },
   setWindowOpacity(opacity: number): void {
     ipcRenderer.send('set-window-opacity', opacity);
+  },
+  accountProfiles: {
+    list: () => ipcRenderer.invoke('account-profiles:list'),
+    create: (name: string) =>
+      ipcRenderer.invoke('account-profiles:create', name),
+    rename: (profileId: string, name: string) =>
+      ipcRenderer.invoke('account-profiles:rename', profileId, name),
+    switch: (profileId: string) =>
+      ipcRenderer.invoke('account-profiles:switch', profileId),
   },
   timers: new Timers(),
   Emojify,

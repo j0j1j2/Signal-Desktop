@@ -21,6 +21,7 @@ import { MessageModel } from './models/messages.preload.ts';
 import type { SocketStatuses } from './textsecure/SocketManager.preload.ts';
 import { itemStorage } from './textsecure/Storage.preload.ts';
 import { BackupLevel } from './services/backups/types.std.ts';
+import type { AccountProfilesSnapshot } from './types/AccountProfile.std.ts';
 
 const log = createLogger('CI');
 
@@ -58,6 +59,9 @@ export type CIType = {
   setMediaPermissions: () => Promise<void>;
   maybeUpdateMaxAudioLevel: (level: number) => void;
   getAndResetMaxAudioLevel: () => number | undefined;
+  getAccountProfiles: () => Promise<AccountProfilesSnapshot>;
+  switchAccountProfile: (profileId: string) => Promise<{ switched: boolean }>;
+  getUserDataPath: () => string;
 };
 
 export type GetCIOptionsType = Readonly<{
@@ -241,6 +245,20 @@ export function getCI({
     return window.getSocketStatus();
   }
 
+  function getAccountProfiles(): Promise<AccountProfilesSnapshot> {
+    return window.SignalContext.accountProfiles.list();
+  }
+
+  function switchAccountProfile(
+    profileId: string
+  ): Promise<{ switched: boolean }> {
+    return window.SignalContext.accountProfiles.switch(profileId);
+  }
+
+  function getUserDataPath(): string {
+    return window.SignalContext.getPath('userData');
+  }
+
   async function resetReleaseNoteAndMegaphoneFetcher() {
     await Promise.all([
       itemStorage.put('releaseNotesVersionWatermark', '7.0.0-alpha.1'),
@@ -295,5 +313,8 @@ export function getCI({
     setMediaPermissions,
     maybeUpdateMaxAudioLevel,
     getAndResetMaxAudioLevel,
+    getAccountProfiles,
+    switchAccountProfile,
+    getUserDataPath,
   };
 }

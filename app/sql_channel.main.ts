@@ -101,3 +101,10 @@ export function initialize(mainSQL: typeof sql): void {
     return sql.resumeWriteAccess();
   });
 }
+
+export function setSQL(mainSQL: typeof sql): void {
+  if (!initialized) {
+    throw new Error('sqlChannels: cannot switch SQL before initialization');
+  }
+  sql = mainSQL;
+}

@@ -7,6 +7,9 @@ import { app } from 'electron';
 
 import { start } from './base_config.node.ts';
 
+// Ephemeral settings belong to the application shell, not to a Signal account.
+// In particular, this keeps the single BrowserWindow's bounds stable while the
+// active account's database and attachments are switched underneath it.
 const userDataPath = app.getPath('userData');
 const targetPath = join(userDataPath, 'ephemeral.json');
 

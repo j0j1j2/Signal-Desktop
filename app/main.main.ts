@@ -50,6 +50,7 @@ import { createLogger } from '../ts/logging/log.std.ts';
 import * as debugLog from '../ts/logging/debuglogs.node.ts';
 import * as uploadDebugLog from '../ts/logging/uploadDebugLog.node.ts';
 import { explodePromise } from '../ts/util/explodePromise.std.ts';
+import { runAccountSwitchTransaction } from './account_switch_transaction.std.ts';
 
 import './startup_config.main.ts';
 
@@ -66,8 +67,8 @@ import {
   isTestEnvironment,
 } from '../ts/environment.std.ts';
 
-// Very important to put before the single instance check, since it is based on the
-//   userData directory. (see requestSingleInstanceLock below)
+// Very important to put before the single instance check, since startup storage
+// overrides determine the application-global userData directory used by the lock.
 import * as userConfig from './user_config.main.ts';
 
 // We generally want to pull in our own modules after this point, after the user
@@ -305,7 +306,7 @@ if (!process.mas) {
 let sqlInitTimeStart = 0;
 let sqlInitTimeEnd = 0;
 
-const sql = new MainSQL();
+let sql = new MainSQL();
 const heicConverter = getHeicConverter();
 
 async function getSpellCheckSetting(): Promise<boolean> {
@@ -2095,11 +2096,13 @@ app.on('ready', async () => {
     dns.setIPv6Enabled(false);
   }
 
-  const [userDataPath, crashDumpsPath, installPath] = await Promise.all([
-    realpath(app.getPath('userData')),
-    realpath(app.getPath('crashDumps')),
-    realpath(rootDir),
-  ]);
+  const [userDataPath, appDataPath, crashDumpsPath, installPath] =
+    await Promise.all([
+      realpath(userConfig.getActiveUserDataPath()),
+      realpath(app.getPath('userData')),
+      realpath(app.getPath('crashDumps')),
+      realpath(rootDir),
+    ]);
 
   updateDefaultSession(session.defaultSession, log);
 
@@ -2122,7 +2125,7 @@ app.on('ready', async () => {
   await mainProcessLogging.initialize(getMainWindow);
 
   const resourceService = OptionalResourceService.create(
-    join(userDataPath, 'optionalResources')
+    join(appDataPath, 'optionalResources')
   );
   await EmojiService.create(resourceService);
   AssetService.create(resourceService);
@@ -2472,6 +2475,31 @@ function setupMenu(options?: Partial<CreateTemplateOptionsType>) {
     menuOptions,
     getResolvedMessagesLocale().i18n
   );
+  const fileMenu = template[0];
+  if (fileMenu && Array.isArray(fileMenu.submenu)) {
+    const snapshot = userConfig.accountProfileManager.getSnapshot();
+    fileMenu.submenu.splice(2, 0, {
+      label: 'Accounts',
+      submenu: snapshot.profiles.map(profile => ({
+        type: 'radio' as const,
+        label: profile.name,
+        checked: profile.isActive,
+        click: () => {
+          async function switchFromMenu(): Promise<void> {
+            try {
+              await requestAccountSwitch(profile.id);
+            } catch (error) {
+              log.error(
+                'Account switch requested from menu failed',
+                Errors.toLogFormat(error)
+              );
+            }
+          }
+          drop(switchFromMenu());
+        },
+      })),
+    });
+  }
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 
@@ -2588,6 +2616,167 @@ async function requestShutdown() {
     log.error('requestShutdown error:', Errors.toLogFormat(error));
   }
 }
+
+let accountSwitchPromise: Promise<{ switched: boolean }> | undefined;
+
+const GLOBAL_LOCAL_STORAGE_KEYS = new Set(['debug', 'windowOpacity']);
+
+async function clearAccountLocalStorage(): Promise<void> {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  const globalKeys = JSON.stringify([...GLOBAL_LOCAL_STORAGE_KEYS]);
+  await mainWindow.webContents.executeJavaScript(`
+    (() => {
+      const globalKeys = new Set(${globalKeys});
+      for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+        const key = localStorage.key(index);
+        if (key !== null && !globalKeys.has(key)) {
+          localStorage.removeItem(key);
+        }
+      }
+    })();
+  `);
+}
+
+async function bindAccountRuntime(userDataPath: string): Promise<void> {
+  userConfig.switchUserDataPath(userDataPath);
+
+  const nextSQL = new MainSQL();
+  sql = nextSQL;
+  sqlChannels.setSQL(nextSQL);
+  attachmentChannel.setActiveAccount({
+    configDir: userDataPath,
+    sql: nextSQL,
+  });
+
+  if (getEnvironment() !== Environment.Test) {
+    installFileHandler({
+      session: session.defaultSession,
+      userDataPath,
+      installPath: rootDir,
+      isWindows: OS.isWindows(),
+    });
+  }
+
+  addSensitivePath(userDataPath);
+  sqlInitPromise = initializeSQL(userDataPath);
+  const result = await sqlInitPromise;
+  if (result.error) {
+    throw result.error;
+  }
+}
+
+async function switchAccountRuntime(
+  profileId: string
+): Promise<{ switched: boolean }> {
+  const currentProfileId =
+    userConfig.accountProfileManager.getActiveProfileId();
+  if (profileId === currentProfileId) {
+    return { switched: false };
+  }
+
+  const previousDataPath =
+    userConfig.accountProfileManager.getDataPath(currentProfileId);
+  const nextDataPath = userConfig.accountProfileManager.getDataPath(profileId);
+  const previousSQL = sql;
+  let previousSQLClosed = false;
+
+  log.info('account switch: shutting down current runtime', {
+    currentProfileId,
+    profileId,
+  });
+  ready = false;
+
+  try {
+    await runAccountSwitchTransaction({
+      switchToNext: async () => {
+        await requestShutdown();
+        // Reject any late SQL calls from the old renderer after it acknowledges
+        // shutdown and before the replacement runtime is ready.
+        sqlChannels.setSQL(undefined);
+        await previousSQL.close();
+        previousSQLClosed = true;
+        await clearAccountLocalStorage();
+        await bindAccountRuntime(nextDataPath);
+      },
+      commit: () => {
+        userConfig.accountProfileManager.setActive(profileId);
+        log.info('account switch: new runtime initialized', { profileId });
+      },
+      restorePrevious: async () => {
+        log.warn('account switch: restoring previous account runtime');
+        try {
+          sqlChannels.setSQL(undefined);
+          if (sql !== previousSQL || !previousSQLClosed) {
+            await sql.close();
+          }
+        } catch (closeError) {
+          log.warn(
+            'account switch: failed to close unsuccessful SQL runtime',
+            Errors.toLogFormat(closeError)
+          );
+        }
+        await bindAccountRuntime(previousDataPath);
+      },
+    });
+  } catch (error) {
+    log.error(
+      'account switch: initialization failed, restoring previous account',
+      Errors.toLogFormat(error)
+    );
+    throw error;
+  } finally {
+    ready = true;
+  }
+
+  return { switched: true };
+}
+
+ipc.handle('account-profiles:list', () => {
+  return userConfig.accountProfileManager.getSnapshot();
+});
+
+ipc.handle('account-profiles:create', (_event, name: string) => {
+  const profile = userConfig.accountProfileManager.create(name);
+  setupMenu();
+  return profile;
+});
+
+ipc.handle(
+  'account-profiles:rename',
+  (_event, profileId: string, name: string) => {
+    userConfig.accountProfileManager.rename(profileId, name);
+    setupMenu();
+    return userConfig.accountProfileManager.getSnapshot();
+  }
+);
+
+async function requestAccountSwitch(
+  profileId: string
+): Promise<{ switched: boolean }> {
+  accountSwitchPromise ??= switchAccountRuntime(profileId);
+  try {
+    const result = await accountSwitchPromise;
+    if (result.switched) {
+      setupMenu();
+      setTimeout(() => mainWindow?.webContents.reloadIgnoringCache(), 0);
+    }
+    return result;
+  } catch (error) {
+    // The old renderer has already been shut down and must be reloaded even when
+    // the requested account failed to initialize.
+    setTimeout(() => mainWindow?.webContents.reloadIgnoringCache(), 0);
+    throw error;
+  } finally {
+    accountSwitchPromise = undefined;
+  }
+}
+
+ipc.handle('account-profiles:switch', (_event, profileId: string) => {
+  return requestAccountSwitch(profileId);
+});
 
 function getWindowDebugInfo() {
   const windows = BrowserWindow.getAllWindows();
@@ -2944,7 +3133,7 @@ ipc.on('get-config', async event => {
     crashDumpsPath: app.getPath('crashDumps'),
     homePath: app.getPath('home'),
     installPath: rootDir,
-    userDataPath: app.getPath('userData'),
+    userDataPath: userConfig.getActiveUserDataPath(),
 
     directoryConfig: directoryConfig.data,
 
@@ -3018,7 +3207,7 @@ ipc.handle('DebugLogs.upload', async (_event, content: string) => {
 
 ipc.on('get-user-data-path', event => {
   // oxlint-disable-next-line no-param-reassign
-  event.returnValue = app.getPath('userData');
+  event.returnValue = userConfig.getActiveUserDataPath();
 });
 
 // Refresh the settings window whenever preferences change
@@ -3137,7 +3326,7 @@ async function ensureFilePermissions(onlyFiles?: Array<string>) {
   log.info('Begin ensuring permissions');
 
   const start = Date.now();
-  const userDataPath = await realpath(app.getPath('userData'));
+  const userDataPath = await realpath(userConfig.getActiveUserDataPath());
   const userDataGlob = attachments.prepareGlobPattern(userDataPath);
 
   // Determine files to touch

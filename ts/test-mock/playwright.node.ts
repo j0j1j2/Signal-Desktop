@@ -197,6 +197,14 @@ export class App extends EventEmitter {
     return this.#app.firstWindow();
   }
 
+  public getProcessId(): number {
+    const pid = this.#app.process().pid;
+    if (pid == null) {
+      throw new Error('Electron process does not have a pid');
+    }
+    return pid;
+  }
+
   public async openSignalRoute(url: URL | string): Promise<void> {
     const window = await this.getWindow();
     await window.evaluate(

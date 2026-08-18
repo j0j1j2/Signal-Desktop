@@ -261,6 +261,10 @@ $secondary-text-color: light-dark(
       @include preferences-icon('../images/icons/v3/settings/settings.svg');
     }
 
+    &--accounts {
+      @include preferences-icon('../images/icons/v3/person/person.svg');
+    }
+
     &--appearance {
       @include preferences-icon('../images/icons/v3/appearance/appearance.svg');
     }
@@ -1074,6 +1078,114 @@ $secondary-text-color: light-dark(
 .Preferences--internal--error {
   padding-inline: 48px 24px;
   color: variables.$color-accent-red;
+}
+
+.Preferences--accounts--error {
+  color: variables.$color-accent-red;
+  padding-inline: 24px;
+}
+
+.PreferencesAccounts__list {
+  list-style: none;
+  margin-block: 16px;
+  margin-inline: 24px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid
+    light-dark(variables.$color-gray-15, variables.$color-gray-65);
+  border-radius: 12px;
+}
+
+.PreferencesAccounts__item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px;
+
+  & + & {
+    border-top: 1px solid
+      light-dark(variables.$color-gray-15, variables.$color-gray-65);
+  }
+}
+
+.PreferencesAccounts__avatar {
+  width: 48px;
+  height: 48px;
+}
+
+.PreferencesAccounts__details {
+  min-width: 0;
+}
+
+.PreferencesAccounts__alias {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.PreferencesAccounts__metadata {
+  @include mixins.font-body-small;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  color: $secondary-text-color;
+}
+
+.PreferencesAccounts__status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  padding-block: 2px;
+  padding-inline: 7px;
+  background: light-dark(variables.$color-gray-05, variables.$color-gray-75);
+
+  &--active {
+    color: light-dark(variables.$color-forest, #8ed29a);
+    background: light-dark(#e5f4e8, rgba(variables.$color-accent-green, 0.18));
+  }
+}
+
+.PreferencesAccounts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.PreferencesAccounts__alias-input,
+.PreferencesAccounts__new-account-input input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
+.PreferencesAccounts__add-account {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-block: 8px 0;
+  padding-inline: 24px;
+}
+
+@container (max-width: 430px) {
+  .PreferencesAccounts__item {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .PreferencesAccounts__actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .PreferencesAccounts__add-account {
+    grid-template-columns: 1fr;
+  }
 }
 
 .Preferences--internal pre,
