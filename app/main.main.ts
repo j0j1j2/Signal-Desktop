@@ -42,6 +42,7 @@ import { createSupportUrl } from '../ts/util/createSupportUrl.std.ts';
 import { missingCaseError } from '../ts/util/missingCaseError.std.ts';
 import { strictAssert } from '../ts/util/assert.std.ts';
 import { drop } from '../ts/util/drop.std.ts';
+import { isPathInside } from '../ts/util/isPathInside.node.ts';
 import type { ThemeSettingType } from '../ts/util/theme.std.ts';
 import { ThemeType } from '../ts/types/Util.std.ts';
 import * as Errors from '../ts/types/errors.std.ts';
@@ -51,6 +52,7 @@ import * as debugLog from '../ts/logging/debuglogs.node.ts';
 import * as uploadDebugLog from '../ts/logging/uploadDebugLog.node.ts';
 import { explodePromise } from '../ts/util/explodePromise.std.ts';
 import { runAccountSwitchTransaction } from './account_switch_transaction.std.ts';
+import type { AccountProfilePresentation } from '../ts/types/AccountProfile.std.ts';
 
 import './startup_config.main.ts';
 
@@ -2651,14 +2653,12 @@ async function bindAccountRuntime(userDataPath: string): Promise<void> {
     sql: nextSQL,
   });
 
-  if (getEnvironment() !== Environment.Test) {
-    installFileHandler({
-      session: session.defaultSession,
-      userDataPath,
-      installPath: rootDir,
-      isWindows: OS.isWindows(),
-    });
-  }
+  installFileHandler({
+    session: session.defaultSession,
+    userDataPath,
+    installPath: rootDir,
+    isWindows: OS.isWindows(),
+  });
 
   addSensitivePath(userDataPath);
   sqlInitPromise = initializeSQL(userDataPath);
@@ -2738,6 +2738,90 @@ ipc.handle('account-profiles:list', () => {
   return userConfig.accountProfileManager.getSnapshot();
 });
 
+const MAX_ACCOUNT_PRESENTATION_IMAGE_BYTES = 2 * 1024 * 1024;
+
+function detectImageContentType(
+  bytes: Buffer<ArrayBuffer>,
+  preferredContentType?: string | null
+): string {
+  if (preferredContentType?.startsWith('image/')) {
+    return preferredContentType.split(';', 1)[0] ?? preferredContentType;
+  }
+  if (bytes.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) {
+    return 'image/jpeg';
+  }
+  if (bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) {
+    return 'image/png';
+  }
+  if (
+    bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  if (bytes.subarray(0, 3).toString('ascii') === 'GIF') {
+    return 'image/gif';
+  }
+  if (bytes.subarray(0, 512).toString('utf8').trimStart().startsWith('<svg')) {
+    return 'image/svg+xml';
+  }
+  throw new Error('Unsupported account presentation image');
+}
+
+async function resolveAccountPresentationImage(
+  source: string
+): Promise<string> {
+  if (typeof source !== 'string' || source.length === 0) {
+    throw new Error('Account presentation image source is required');
+  }
+  if (source.startsWith('data:image/')) {
+    if (source.length > MAX_ACCOUNT_PRESENTATION_IMAGE_BYTES * 2) {
+      throw new Error('Account presentation image is too large');
+    }
+    return source;
+  }
+
+  let bytes: Buffer<ArrayBuffer>;
+  let preferredContentType: string | null | undefined;
+  if (source.startsWith('attachment://')) {
+    const response = await net.fetch(source);
+    if (!response.ok) {
+      throw new Error(
+        `Unable to read account presentation image (${response.status})`
+      );
+    }
+    preferredContentType = response.headers.get('content-type');
+    bytes = Buffer.from(await response.arrayBuffer());
+  } else {
+    const badgeRoot = await realpath(
+      attachments.getBadgesPath(userConfig.getActiveUserDataPath())
+    );
+    const resolvedSource = await realpath(source);
+    if (!isPathInside(resolvedSource, badgeRoot)) {
+      throw new Error('Account presentation image is outside the badge folder');
+    }
+    bytes = Buffer.from(await fsExtra.readFile(resolvedSource));
+  }
+
+  if (bytes.byteLength > MAX_ACCOUNT_PRESENTATION_IMAGE_BYTES) {
+    throw new Error('Account presentation image is too large');
+  }
+  const contentType = detectImageContentType(bytes, preferredContentType);
+  return `data:${contentType};base64,${bytes.toString('base64')}`;
+}
+
+ipc.handle('account-profiles:resolve-image', (_event, source: string) => {
+  return resolveAccountPresentationImage(source);
+});
+
+ipc.handle(
+  'account-profiles:update-presentation',
+  (_event, presentation: AccountProfilePresentation) => {
+    userConfig.accountProfileManager.updateActivePresentation(presentation);
+    return userConfig.accountProfileManager.getSnapshot();
+  }
+);
+
 ipc.handle('account-profiles:create', (_event, name: string) => {
   const profile = userConfig.accountProfileManager.create(name);
   setupMenu();
@@ -2752,6 +2836,12 @@ ipc.handle(
     return userConfig.accountProfileManager.getSnapshot();
   }
 );
+
+ipc.handle('account-profiles:remove', (_event, profileId: string) => {
+  userConfig.accountProfileManager.remove(profileId);
+  setupMenu();
+  return userConfig.accountProfileManager.getSnapshot();
+});
 
 async function requestAccountSwitch(
   profileId: string

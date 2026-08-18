@@ -27,6 +27,7 @@ import { LocaleEmojiListSchema } from '../types/emoji.std.ts';
 import type { HourCyclePreference } from '../types/I18N.std.ts';
 import type {
   AccountProfile,
+  AccountProfilePresentation,
   AccountProfilesSnapshot,
 } from '../types/AccountProfile.std.ts';
 import { MinimalSignalContext } from './minimalContext.preload.ts';
@@ -89,6 +90,11 @@ export type SignalContextType = {
       profileId: string,
       name: string
     ) => Promise<AccountProfilesSnapshot>;
+    remove: (profileId: string) => Promise<AccountProfilesSnapshot>;
+    resolveImage: (source: string) => Promise<string>;
+    updatePresentation: (
+      presentation: AccountProfilePresentation
+    ) => Promise<AccountProfilesSnapshot>;
     switch: (profileId: string) => Promise<{ switched: boolean }>;
   };
 } & MinimalSignalContextType;
@@ -112,6 +118,12 @@ export const SignalContext: SignalContextType = {
       ipcRenderer.invoke('account-profiles:create', name),
     rename: (profileId: string, name: string) =>
       ipcRenderer.invoke('account-profiles:rename', profileId, name),
+    remove: (profileId: string) =>
+      ipcRenderer.invoke('account-profiles:remove', profileId),
+    resolveImage: (source: string) =>
+      ipcRenderer.invoke('account-profiles:resolve-image', source),
+    updatePresentation: (presentation: AccountProfilePresentation) =>
+      ipcRenderer.invoke('account-profiles:update-presentation', presentation),
     switch: (profileId: string) =>
       ipcRenderer.invoke('account-profiles:switch', profileId),
   },

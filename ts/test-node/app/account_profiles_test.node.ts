@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -60,6 +61,71 @@ describe('AccountProfileManager', () => {
       reloaded.getActiveDataPath(),
       new RegExp(`Signal-profiles.${created.id}$`)
     );
+  });
+
+  it('persists presentation details for the active account', () => {
+    const manager = new AccountProfileManager(defaultUserDataPath);
+    const imageDataUrl = `data:image/png;base64,${Buffer.from('image').toString(
+      'base64'
+    )}`;
+
+    manager.updateActivePresentation({
+      title: 'Alice',
+      profileName: 'Alice Profile',
+      phoneNumber: '+12025550123',
+      color: 'A200',
+      avatarDataUrl: imageDataUrl,
+      badge: {
+        name: 'Supporter',
+        lightImageDataUrl: imageDataUrl,
+        darkImageDataUrl: imageDataUrl,
+      },
+    });
+
+    const reloaded = new AccountProfileManager(defaultUserDataPath);
+    assert.deepEqual(reloaded.getSnapshot().profiles[0]?.presentation, {
+      title: 'Alice',
+      profileName: 'Alice Profile',
+      phoneNumber: '+12025550123',
+      color: 'A200',
+      avatarDataUrl: imageDataUrl,
+      badge: {
+        name: 'Supporter',
+        lightImageDataUrl: imageDataUrl,
+        darkImageDataUrl: imageDataUrl,
+      },
+    });
+  });
+
+  it('deletes an inactive profile and its local data', () => {
+    const manager = new AccountProfileManager(defaultUserDataPath);
+    const created = manager.create('Temporary');
+    const profileDataPath = manager.getDataPath(created.id);
+    writeFileSync(join(profileDataPath, 'account-data'), 'private');
+
+    manager.remove(created.id);
+
+    assert.isFalse(existsSync(profileDataPath));
+    assert.notInclude(
+      manager.getSnapshot().profiles.map(profile => profile.id),
+      created.id
+    );
+    assert.notInclude(
+      new AccountProfileManager(defaultUserDataPath)
+        .getSnapshot()
+        .profiles.map(profile => profile.id),
+      created.id
+    );
+  });
+
+  it('does not delete the default or active profile', () => {
+    const manager = new AccountProfileManager(defaultUserDataPath);
+    const created = manager.create('Active');
+
+    assert.throws(() => manager.remove('default'), 'default account');
+    manager.setActive(created.id);
+    assert.throws(() => manager.remove(created.id), 'active account');
+    assert.isTrue(existsSync(manager.getDataPath(created.id)));
   });
 
   it('rejects empty names and unknown profile ids', () => {

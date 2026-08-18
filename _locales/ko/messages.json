@@ -5929,14 +5929,20 @@
   "icu:Preferences__Accounts__Switch": {
     "messageformat": "전환"
   },
-  "icu:Preferences__Accounts__NewAccountName": {
-    "messageformat": "새 계정 프로필 이름"
-  },
-  "icu:Preferences__Accounts__AccountName": {
-    "messageformat": "계정 이름"
+  "icu:Preferences__Accounts__NewAccountDefaultName": {
+    "messageformat": "새 계정"
   },
   "icu:Preferences__Accounts__AddAccount": {
     "messageformat": "계정 추가"
+  },
+  "icu:Install__other-accounts": {
+    "messageformat": "다른 계정으로 돌아가기"
+  },
+  "icu:Install__switch-account": {
+    "messageformat": "계정 전환: {accountName}"
+  },
+  "icu:Install__switch-account-error": {
+    "messageformat": "계정을 전환하지 못했습니다. 다시 시도하세요."
   },
   "icu:Preferences__Accounts__EditAlias": {
     "messageformat": "별칭 편집"
@@ -5949,6 +5955,18 @@
   },
   "icu:Preferences__Accounts__CancelAlias": {
     "messageformat": "취소"
+  },
+  "icu:Preferences__Accounts__Delete": {
+    "messageformat": "삭제"
+  },
+  "icu:Preferences__Accounts__DeleteTitle": {
+    "messageformat": "{accountName} 계정을 삭제할까요?"
+  },
+  "icu:Preferences__Accounts__DeleteDescription": {
+    "messageformat": "이 기기에서 이 계정과 로컬 데이터를 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다."
+  },
+  "icu:Preferences__Accounts__DeleteConfirm": {
+    "messageformat": "계정 삭제"
   },
   "icu:Preferences__button--donate": {
     "messageformat": "Signal 후원하기"

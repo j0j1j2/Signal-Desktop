@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 import { strict as assert } from 'node:assert';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { MINUTE } from '../../util/durations/index.std.ts';
 import type { AccountProfilesSnapshot } from '../../types/AccountProfile.std.ts';
@@ -46,29 +47,91 @@ describe('account switching', function (this: Mocha.Suite) {
     await page.locator('.NavTabs__ItemIcon--Settings').click();
     await page.getByRole('heading', { name: 'Settings' }).waitFor();
     await page.getByRole('button', { name: 'Accounts' }).click();
-    const profileNameInput = page.getByRole('textbox', {
-      name: 'New account profile name',
-    });
-    await profileNameInput.waitFor();
-    await profileNameInput.fill('Secondary');
+    const addAccountButton = page.getByRole('button', { name: 'Add account' });
+    await addAccountButton.waitFor();
+
+    let initialSnapshot: AccountProfilesSnapshot | undefined;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      // oxlint-disable-next-line no-await-in-loop
+      initialSnapshot = await page.evaluate<AccountProfilesSnapshot>(
+        'window.SignalCI.getAccountProfiles()'
+      );
+      if (
+        initialSnapshot?.profiles.find(profile => profile.id === 'default')
+          ?.presentation?.title
+      ) {
+        break;
+      }
+      // oxlint-disable-next-line no-await-in-loop
+      await page.waitForTimeout(100);
+    }
+    assert(initialSnapshot);
+    const primaryPresentation = initialSnapshot.profiles.find(
+      profile => profile.id === 'default'
+    )?.presentation;
+    assert(primaryPresentation?.title, JSON.stringify(initialSnapshot));
+
+    await addAccountButton.click();
+
+    const createdSnapshot = await page.evaluate<AccountProfilesSnapshot>(
+      'window.SignalCI.getAccountProfiles()'
+    );
+    assert(createdSnapshot);
+    const secondary = createdSnapshot.profiles.find(
+      profile => profile.name === 'New Account'
+    );
+    assert(secondary);
+    assert.deepEqual(
+      createdSnapshot.profiles.find(profile => profile.id === 'default')
+        ?.presentation,
+      primaryPresentation
+    );
+    assert.equal(createdSnapshot.activeProfileId, 'default');
+
+    const visibleAccountsPanel = page.locator('.Preferences__content:visible');
+    const secondaryRow = visibleAccountsPanel.locator(
+      `.PreferencesAccounts__item[data-profile-id="${secondary.id}"]`
+    );
+    await secondaryRow.waitFor();
 
     const switchedToSecondary = page.waitForEvent('load');
-    await page.getByRole('button', { name: 'Add account' }).click();
-    await switchedToSecondary;
+    const secondaryAppLoaded = app.waitUntilLoaded();
+    await secondaryRow.getByRole('button', { name: 'Switch' }).click();
+    await Promise.all([switchedToSecondary, secondaryAppLoaded]);
 
     const secondarySnapshot = await page.evaluate<AccountProfilesSnapshot>(
       'window.SignalCI.getAccountProfiles()'
     );
     assert(secondarySnapshot);
-    const secondary = secondarySnapshot.profiles.find(
-      profile => profile.name === 'Secondary'
-    );
-    assert(secondary);
     assert.equal(secondarySnapshot.activeProfileId, secondary.id);
     const secondaryDataPath = await page.evaluate<string>(
       'window.SignalCI.getUserDataPath()'
     );
     assert.notEqual(secondaryDataPath, initialDataPath);
+    const badgeProbePath = join(
+      secondaryDataPath,
+      'badges.noindex',
+      'account-switch-probe.svg'
+    );
+    mkdirSync(join(secondaryDataPath, 'badges.noindex'), { recursive: true });
+    writeFileSync(
+      badgeProbePath,
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><rect width="24" height="24" fill="green"/></svg>'
+    );
+    assert.equal(
+      await page.evaluate(
+        source =>
+          new Promise<boolean>(resolve => {
+            const image = new globalThis.Image();
+            image.onload = () => resolve(image.naturalWidth === 24);
+            image.onerror = () => resolve(false);
+            image.src = source;
+          }),
+        pathToFileURL(badgeProbePath).href
+      ),
+      true,
+      'the file protocol must allow badge images from the active profile'
+    );
     assert.equal(existsSync(join(secondaryDataPath, 'ephemeral.json')), false);
     assert.deepEqual(
       await page.evaluate(`({
@@ -80,8 +143,12 @@ describe('account switching', function (this: Mocha.Suite) {
     assert.equal(app.getProcessId(), initialPid);
     assert.equal(await app.getWindow(), page);
 
+    const returnToPrimaryButton = page.getByRole('button', {
+      name: 'Switch to Primary',
+    });
+    await returnToPrimaryButton.waitFor();
     const switchedToPrimary = page.waitForEvent('load');
-    await page.evaluate("void window.SignalCI.switchAccountProfile('default')");
+    await returnToPrimaryButton.click();
     await switchedToPrimary;
 
     const primarySnapshot = await page.evaluate<AccountProfilesSnapshot>(
@@ -99,17 +166,19 @@ describe('account switching', function (this: Mocha.Suite) {
     await page.locator('.NavTabs__ItemIcon--Settings').click();
     await page.getByRole('heading', { name: 'Settings' }).waitFor();
     await page.getByRole('button', { name: 'Accounts' }).click();
-    const visibleAccountsPanel = page.locator('.Preferences__content:visible');
-    const secondaryRow = visibleAccountsPanel.locator(
+    const restoredAccountsPanel = page.locator('.Preferences__content:visible');
+    const restoredSecondaryRow = restoredAccountsPanel.locator(
       `.PreferencesAccounts__item[data-profile-id="${secondary.id}"]`
     );
-    await secondaryRow.getByRole('button', { name: 'Edit alias' }).click();
-    const aliasInput = secondaryRow.getByRole('textbox', {
+    await restoredSecondaryRow
+      .getByRole('button', { name: 'Edit alias' })
+      .click();
+    const aliasInput = restoredSecondaryRow.getByRole('textbox', {
       name: 'Account alias',
     });
     await aliasInput.fill('Work');
-    await secondaryRow.getByRole('button', { name: 'Save' }).click();
-    await secondaryRow.getByText('Work', { exact: true }).waitFor();
+    await restoredSecondaryRow.getByRole('button', { name: 'Save' }).click();
+    await restoredSecondaryRow.getByText('Work', { exact: true }).waitFor();
 
     const renamedSnapshot = await page.evaluate<AccountProfilesSnapshot>(
       'window.SignalCI.getAccountProfiles()'
@@ -121,11 +190,23 @@ describe('account switching', function (this: Mocha.Suite) {
       'Work'
     );
 
+    await restoredSecondaryRow.getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('heading', { name: 'Delete Work?' }).waitFor();
+    await page.getByRole('button', { name: 'Delete account' }).click();
+    await restoredSecondaryRow.waitFor({ state: 'detached' });
+    assert.equal(existsSync(secondaryDataPath), false);
+    assert.equal(
+      (
+        await page.evaluate<AccountProfilesSnapshot>(
+          'window.SignalCI.getAccountProfiles()'
+        )
+      ).profiles.some(profile => profile.id === secondary.id),
+      false
+    );
+
     const screenshotPath = process.env.SIGNAL_ACCOUNT_SWITCH_SCREENSHOT;
     if (screenshotPath) {
-      await page
-        .getByRole('textbox', { name: 'New account profile name' })
-        .waitFor();
+      await page.getByRole('button', { name: 'Add account' }).waitFor();
       await page.screenshot({ path: screenshotPath, fullPage: true });
     }
   });

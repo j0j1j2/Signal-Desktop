@@ -7888,17 +7888,25 @@
     "messageformat": "Switch",
     "description": "Button to switch to another account profile"
   },
-  "icu:Preferences__Accounts__NewAccountName": {
-    "messageformat": "New account profile name",
-    "description": "Accessible label for the new account profile name field"
-  },
-  "icu:Preferences__Accounts__AccountName": {
-    "messageformat": "Account name",
-    "description": "Placeholder for the new account profile name field"
+  "icu:Preferences__Accounts__NewAccountDefaultName": {
+    "messageformat": "New Account",
+    "description": "Default alias assigned to a newly created account profile"
   },
   "icu:Preferences__Accounts__AddAccount": {
     "messageformat": "Add account",
     "description": "Button to add a local Signal account profile"
+  },
+  "icu:Install__other-accounts": {
+    "messageformat": "Return to another account",
+    "description": "Label for account buttons shown while linking a new account"
+  },
+  "icu:Install__switch-account": {
+    "messageformat": "Switch to {accountName}",
+    "description": "Accessible label for returning to an existing account while linking a new account"
+  },
+  "icu:Install__switch-account-error": {
+    "messageformat": "Couldn't switch accounts. Try again.",
+    "description": "Error shown when returning to an existing account from the linking screen fails"
   },
   "icu:Preferences__Accounts__EditAlias": {
     "messageformat": "Edit alias",
@@ -7915,6 +7923,22 @@
   "icu:Preferences__Accounts__CancelAlias": {
     "messageformat": "Cancel",
     "description": "Button to cancel editing an account profile alias"
+  },
+  "icu:Preferences__Accounts__Delete": {
+    "messageformat": "Delete",
+    "description": "Button to delete an inactive account profile"
+  },
+  "icu:Preferences__Accounts__DeleteTitle": {
+    "messageformat": "Delete {accountName}?",
+    "description": "Title of the account profile deletion confirmation dialog"
+  },
+  "icu:Preferences__Accounts__DeleteDescription": {
+    "messageformat": "This permanently removes this account and its local data from this device. This action cannot be undone.",
+    "description": "Description of the account profile deletion confirmation dialog"
+  },
+  "icu:Preferences__Accounts__DeleteConfirm": {
+    "messageformat": "Delete account",
+    "description": "Confirmation button that deletes an account profile"
   },
   "icu:Preferences__button--donate": {
     "messageformat": "Donate to Signal",

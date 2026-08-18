@@ -1157,16 +1157,15 @@ $secondary-text-color: light-dark(
   gap: 4px;
 }
 
-.PreferencesAccounts__alias-input,
-.PreferencesAccounts__new-account-input input {
+.PreferencesAccounts__alias-input {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
 }
 
 .PreferencesAccounts__add-account {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 12px;
   padding-block: 8px 0;
@@ -1181,10 +1180,6 @@ $secondary-text-color: light-dark(
   .PreferencesAccounts__actions {
     grid-column: 2;
     justify-content: flex-start;
-  }
-
-  .PreferencesAccounts__add-account {
-    grid-template-columns: 1fr;
   }
 }
 

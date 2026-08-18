@@ -14,6 +14,7 @@ import { useItemsActions } from '../ducks/items.preload.ts';
 import { getNavTabsCollapsed } from '../selectors/items.dom.ts';
 import { SmartChatsTab } from './ChatsTab.preload.tsx';
 import { SmartPreferences } from './Preferences.preload.tsx';
+import { AccountProfilePresentationSync } from './AccountProfilePresentationSync.preload.tsx';
 
 function renderChatsTab() {
   return <SmartChatsTab />;
@@ -48,18 +49,21 @@ export const SmartInbox = memo(function SmartInbox(): JSX.Element {
   const { toggleNavTabsCollapse } = useItemsActions();
 
   return (
-    <Inbox
-      isCustomizingPreferredReactions={isCustomizingPreferredReactions}
-      navTabsCollapsed={navTabsCollapsed}
-      onToggleNavTabsCollapse={toggleNavTabsCollapse}
-      renderChatsTab={renderChatsTab}
-      renderCallsTab={renderCallsTab}
-      renderCustomizingPreferredReactionsModal={
-        renderCustomizingPreferredReactionsModal
-      }
-      renderNavTabs={renderNavTabs}
-      renderStoriesTab={renderStoriesTab}
-      renderSettingsTab={renderSettingsTab}
-    />
+    <>
+      <AccountProfilePresentationSync />
+      <Inbox
+        isCustomizingPreferredReactions={isCustomizingPreferredReactions}
+        navTabsCollapsed={navTabsCollapsed}
+        onToggleNavTabsCollapse={toggleNavTabsCollapse}
+        renderChatsTab={renderChatsTab}
+        renderCallsTab={renderCallsTab}
+        renderCustomizingPreferredReactionsModal={
+          renderCustomizingPreferredReactionsModal
+        }
+        renderNavTabs={renderNavTabs}
+        renderStoriesTab={renderStoriesTab}
+        renderSettingsTab={renderSettingsTab}
+      />
+    </>
   );
 });

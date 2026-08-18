@@ -1,24 +1,35 @@
 // Copyright 2026 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+} from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { basename, dirname, join } from 'node:path';
 import { sync as writeFileSync } from 'write-file-atomic';
 
 import type {
   AccountProfile,
+  AccountProfilePresentation,
   AccountProfilesSnapshot,
 } from '../ts/types/AccountProfile.std.ts';
+import { AvatarColors } from '../ts/types/Colors.std.ts';
 
 const DEFAULT_PROFILE_ID = 'default';
 const REGISTRY_VERSION = 1;
 const MAX_PROFILE_NAME_LENGTH = 64;
+const MAX_PRESENTATION_TEXT_LENGTH = 256;
+const MAX_IMAGE_DATA_URL_LENGTH = 3 * 1024 * 1024;
 
 type StoredProfile = Readonly<{
   id: string;
   name: string;
   createdAt: number;
+  presentation?: AccountProfilePresentation;
 }>;
 
 type StoredRegistry = Readonly<{
@@ -40,6 +51,47 @@ function normalizeName(name: string): string {
   return normalized;
 }
 
+function isOptionalPresentationText(
+  value: unknown
+): value is string | undefined {
+  return (
+    value === undefined ||
+    (typeof value === 'string' && value.length <= MAX_PRESENTATION_TEXT_LENGTH)
+  );
+}
+
+function isImageDataUrl(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length <= MAX_IMAGE_DATA_URL_LENGTH &&
+    /^data:image\/[a-z0-9.+-]+;base64,/i.test(value)
+  );
+}
+
+function isPresentation(value: unknown): value is AccountProfilePresentation {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const presentation = value as Partial<AccountProfilePresentation>;
+  const badge = presentation.badge;
+  return (
+    isOptionalPresentationText(presentation.title) &&
+    isOptionalPresentationText(presentation.profileName) &&
+    isOptionalPresentationText(presentation.phoneNumber) &&
+    (presentation.color === undefined ||
+      AvatarColors.includes(presentation.color)) &&
+    (presentation.avatarDataUrl === undefined ||
+      isImageDataUrl(presentation.avatarDataUrl)) &&
+    (badge === undefined ||
+      (typeof badge === 'object' &&
+        badge != null &&
+        typeof badge.name === 'string' &&
+        badge.name.length <= MAX_PRESENTATION_TEXT_LENGTH &&
+        isImageDataUrl(badge.lightImageDataUrl) &&
+        isImageDataUrl(badge.darkImageDataUrl)))
+  );
+}
+
 function isStoredProfile(value: unknown): value is StoredProfile {
   if (!value || typeof value !== 'object') {
     return false;
@@ -52,7 +104,8 @@ function isStoredProfile(value: unknown): value is StoredProfile {
     profile.name.trim().length > 0 &&
     profile.name.length <= MAX_PROFILE_NAME_LENGTH &&
     typeof profile.createdAt === 'number' &&
-    Number.isFinite(profile.createdAt)
+    Number.isFinite(profile.createdAt) &&
+    (profile.presentation === undefined || isPresentation(profile.presentation))
   );
 }
 
@@ -132,12 +185,78 @@ export class AccountProfileManager {
     this.#registry = nextRegistry;
   }
 
+  remove(profileId: string): void {
+    this.#getStoredProfile(profileId);
+    if (profileId === DEFAULT_PROFILE_ID) {
+      throw new Error('The default account profile cannot be deleted');
+    }
+    if (profileId === this.#registry.activeProfileId) {
+      throw new Error('The active account profile cannot be deleted');
+    }
+
+    const profilePath = this.getDataPath(profileId);
+    const deletingPath = `${profilePath}.deleting-${randomUUID()}`;
+    const movedProfileData = existsSync(profilePath);
+    if (movedProfileData) {
+      renameSync(profilePath, deletingPath);
+    }
+
+    const nextRegistry: StoredRegistry = {
+      ...this.#registry,
+      profiles: this.#registry.profiles.filter(
+        profile => profile.id !== profileId
+      ),
+    };
+    try {
+      this.#save(nextRegistry);
+    } catch (error) {
+      if (movedProfileData) {
+        renameSync(deletingPath, profilePath);
+      }
+      throw error;
+    }
+
+    this.#registry = nextRegistry;
+    if (movedProfileData) {
+      try {
+        rmSync(deletingPath, { recursive: true, force: true });
+      } catch {
+        // The account is already removed from the registry. Leaving its data in
+        // an unreachable tombstone is safer than reporting a misleading failure.
+      }
+    }
+  }
+
   setActive(profileId: string): void {
     this.#getStoredProfile(profileId);
     mkdirSync(this.getDataPath(profileId), { recursive: true });
     const nextRegistry: StoredRegistry = {
       ...this.#registry,
       activeProfileId: profileId,
+    };
+    this.#save(nextRegistry);
+    this.#registry = nextRegistry;
+  }
+
+  updateActivePresentation(presentation: AccountProfilePresentation): void {
+    if (!isPresentation(presentation)) {
+      throw new Error('Invalid account profile presentation');
+    }
+
+    const activeProfileId = this.#registry.activeProfileId;
+    const currentProfile = this.#getStoredProfile(activeProfileId);
+    if (
+      JSON.stringify(currentProfile.presentation) ===
+      JSON.stringify(presentation)
+    ) {
+      return;
+    }
+
+    const nextRegistry: StoredRegistry = {
+      ...this.#registry,
+      profiles: this.#registry.profiles.map(profile =>
+        profile.id === activeProfileId ? { ...profile, presentation } : profile
+      ),
     };
     this.#save(nextRegistry);
     this.#registry = nextRegistry;

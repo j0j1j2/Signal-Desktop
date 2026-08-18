@@ -21,6 +21,7 @@ type PropsType = {
   renderStandaloneRegistration: () => JSX.Element;
   renderStoryViewer: (closeView: () => unknown) => JSX.Element;
   renderInstallScreen: () => JSX.Element;
+  renderInstallAccountSwitcher: () => JSX.Element | null;
   renderLightbox: () => JSX.Element | null;
   theme: ThemeType;
   isMaximized: boolean;
@@ -42,6 +43,7 @@ export function App({
   renderGlobalModalContainer,
   renderInbox,
   renderInstallScreen,
+  renderInstallAccountSwitcher,
   renderLightbox,
   renderStandaloneRegistration,
   renderStoryViewer,
@@ -112,6 +114,9 @@ export function App({
       })}
     >
       {contents}
+      {(state.appView === AppViewType.Installer ||
+        state.appView === AppViewType.Standalone) &&
+        renderInstallAccountSwitcher()}
       {renderGlobalModalContainer()}
       {renderCallManager()}
       {renderLightbox()}

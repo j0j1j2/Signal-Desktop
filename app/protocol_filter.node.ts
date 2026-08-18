@@ -77,9 +77,13 @@ export function _createFileHandler({
     getTempPath(userDataPath),
     getUpdateCachePath(userDataPath),
   ];
-  const allowedRootsCased = allowedRoots.map(root =>
-    isWindows ? root.toLowerCase() : root
-  );
+  const allowedRootsCased = allowedRoots.map(root => {
+    const normalizedRoot = normalize(root);
+    const realRoot = existsSync(normalizedRoot)
+      ? realpathSync(normalizedRoot)
+      : normalizedRoot;
+    return isWindows ? realRoot.toLowerCase() : realRoot;
+  });
   return (request: ProtocolRequest, callback: CallbackType): void => {
     let targetPath;
 
@@ -145,6 +149,9 @@ export function installFileHandler({
   installPath: string;
   isWindows: boolean;
 }): void {
+  if (session.protocol.isProtocolIntercepted('file')) {
+    session.protocol.uninterceptProtocol('file');
+  }
   session.protocol.interceptFileProtocol(
     'file',
     _createFileHandler({ userDataPath, installPath, isWindows })
