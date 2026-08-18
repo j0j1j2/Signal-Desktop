@@ -140,6 +140,7 @@ import {
   StoryRecipientUpdateEvent,
   SuccessfulDecryptEvent,
   TypingEvent,
+  UsernameChangeSyncEvent,
   ViewEvent,
   ViewOnceOpenSyncEvent,
   ViewSyncEvent,
@@ -695,6 +696,11 @@ export default class MessageReceiver
   public override addEventListener(
     name: 'deviceNameChangeSync',
     handler: (ev: DeviceNameChangeSyncEvent) => void
+  ): void;
+
+  public override addEventListener(
+    name: 'usernameChangeSync',
+    handler: (ev: UsernameChangeSyncEvent) => void
   ): void;
 
   public override addEventListener(name: string, handler: EventHandler): void {
@@ -3116,6 +3122,9 @@ export default class MessageReceiver
         syncMessage.content.attachmentBackfillResponse
       );
     }
+    if (syncMessage.content?.usernameChange) {
+      return this.#handleUsernameChangeSync(envelope);
+    }
 
     this.#removeFromCache(envelope);
     const envelopeId = getEnvelopeId(envelope);
@@ -3867,6 +3876,18 @@ export default class MessageReceiver
       this.#removeFromCache.bind(this, envelope)
     );
     await this.#dispatchAndWait(logId, deviceNameChangeEvent);
+  }
+
+  async #handleUsernameChangeSync(envelope: ProcessedEnvelope): Promise<void> {
+    const logId = `handleUsernameChangeSync: ${getEnvelopeId(envelope)}`;
+    log.info(logId);
+
+    logUnexpectedUrgentValue(envelope, 'usernameChangeSync');
+
+    const usernameChangeEvent = new UsernameChangeSyncEvent(
+      this.#removeFromCache.bind(this, envelope)
+    );
+    await this.#dispatchAndWait(logId, usernameChangeEvent);
   }
 
   async #handleContacts(

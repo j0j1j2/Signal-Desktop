@@ -2906,6 +2906,7 @@ export async function createAccount({
   const capabilities: CapabilitiesUploadType = {
     attachmentBackfill: true,
     spqr: true,
+    usernameChangeSyncMessage: true,
   };
 
   // Desktop doesn't support recovery but we need to provide a recovery password.
@@ -2971,6 +2972,7 @@ export async function linkDevice({
   const capabilities: CapabilitiesUploadType = {
     attachmentBackfill: true,
     spqr: true,
+    usernameChangeSyncMessage: true,
   };
 
   const jsonData = {
