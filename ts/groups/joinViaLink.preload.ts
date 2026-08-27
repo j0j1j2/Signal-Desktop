@@ -42,7 +42,18 @@ import { itemStorage } from '../textsecure/Storage.preload.ts';
 const log = createLogger('joinViaLink');
 const { i18n } = window.SignalContext;
 
-export async function joinViaLink(value: string): Promise<void> {
+export type JoinViaLinkOptions = Readonly<{
+  headless?: boolean;
+  requireNoApproval?: boolean;
+}>;
+
+export class GroupInviteLinkRequiresApprovalError extends Error {}
+
+export async function joinViaLink(
+  value: string,
+  options: JoinViaLinkOptions = {}
+): Promise<void> {
+  const { headless = false, requireNoApproval = false } = options;
   let inviteLinkPassword: string;
   let masterKey: string;
   try {
@@ -50,6 +61,10 @@ export async function joinViaLink(value: string): Promise<void> {
   } catch (error: unknown) {
     const errorString = Errors.toLogFormat(error);
     log.error(`Failed to parse group link ${errorString}`);
+
+    if (headless) {
+      throw error;
+    }
 
     if (error instanceof Error && error.name === LINK_VERSION_ERROR) {
       window.reduxActions.globalModals.showErrorModal({
@@ -77,13 +92,15 @@ export async function joinViaLink(value: string): Promise<void> {
   const ourAci = itemStorage.user.getCheckedAci();
 
   if (existingConversation && existingConversation.hasMember(ourAci)) {
-    log.warn(`${logId}: Already a member of group, opening conversation`);
-    window.reduxActions.conversations.showConversation({
-      conversationId: existingConversation.id,
-    });
-    window.reduxActions.toast.showToast({
-      toastType: ToastType.AlreadyGroupMember,
-    });
+    log.warn(`${logId}: Already a member of group`);
+    if (!headless) {
+      window.reduxActions.conversations.showConversation({
+        conversationId: existingConversation.id,
+      });
+      window.reduxActions.toast.showToast({
+        toastType: ToastType.AlreadyGroupMember,
+      });
+    }
     return;
   }
 
@@ -101,6 +118,10 @@ export async function joinViaLink(value: string): Promise<void> {
   } catch (error: unknown) {
     const errorString = Errors.toLogFormat(error);
     log.error(`${logId}: Failed to fetch group info - ${errorString}`);
+
+    if (headless) {
+      throw error;
+    }
 
     if (
       error instanceof HTTPError &&
@@ -133,6 +154,9 @@ export async function joinViaLink(value: string): Promise<void> {
     log.error(
       `${logId}: addFromInviteLink value of ${result.addFromInviteLink} is invalid`
     );
+    if (headless) {
+      throw new Error('Group invite link is disabled or invalid');
+    }
     window.reduxActions.globalModals.showErrorModal({
       description: i18n('icu:GroupV2--join--link-revoked'),
       title: i18n('icu:GroupV2--join--link-revoked--title'),
@@ -152,6 +176,11 @@ export async function joinViaLink(value: string): Promise<void> {
   const approvalRequired =
     result.addFromInviteLink ===
     Proto.AccessControl.AccessRequired.ADMINISTRATOR;
+  if (requireNoApproval && approvalRequired) {
+    throw new GroupInviteLinkRequiresApprovalError(
+      'Group invite link requires administrator approval'
+    );
+  }
   const title =
     decryptGroupTitle(dropNull(result.title), secretParams) ||
     i18n('icu:unknownGroup');
@@ -174,13 +203,15 @@ export async function joinViaLink(value: string): Promise<void> {
     // We're waiting for the left pane to re-sort before we navigate to that conversation
     await sleep(200);
 
-    window.reduxActions.conversations.showConversation({
-      conversationId: existingConversation.id,
-    });
+    if (!headless) {
+      window.reduxActions.conversations.showConversation({
+        conversationId: existingConversation.id,
+      });
 
-    window.reduxActions.toast.showToast({
-      toastType: ToastType.AlreadyRequestedToJoin,
-    });
+      window.reduxActions.toast.showToast({
+        toastType: ToastType.AlreadyRequestedToJoin,
+      });
+    }
     return;
   }
 
@@ -214,6 +245,7 @@ export async function joinViaLink(value: string): Promise<void> {
 
   // Explode a promise so we know when this whole join process is complete
   const { promise, resolve, reject } = explodePromise<void>();
+  let groupV2InfoRoot: Root | undefined;
 
   const closeDialog = async () => {
     try {
@@ -222,7 +254,9 @@ export async function joinViaLink(value: string): Promise<void> {
         groupV2InfoRoot = undefined;
       }
 
-      window.reduxActions.conversations.setPreJoinConversation(undefined);
+      if (!headless) {
+        window.reduxActions.conversations.setPreJoinConversation(undefined);
+      }
 
       if (
         localAvatar?.loadingState === LoadingState.Loaded &&
@@ -243,7 +277,9 @@ export async function joinViaLink(value: string): Promise<void> {
         groupV2InfoRoot = undefined;
       }
 
-      window.reduxActions.conversations.setPreJoinConversation(undefined);
+      if (!headless) {
+        window.reduxActions.conversations.setPreJoinConversation(undefined);
+      }
 
       await longRunningTaskWrapper({
         name: 'joinViaLink',
@@ -269,9 +305,11 @@ export async function joinViaLink(value: string): Promise<void> {
             log.warn(
               `${logId}: User is part of group on second check, opening conversation`
             );
-            window.reduxActions.conversations.showConversation({
-              conversationId: targetConversation.id,
-            });
+            if (!headless) {
+              window.reduxActions.conversations.showConversation({
+                conversationId: targetConversation.id,
+              });
+            }
             return;
           }
 
@@ -360,9 +398,11 @@ export async function joinViaLink(value: string): Promise<void> {
               await DataWriter.updateConversation(tempConversation.attributes);
             }
 
-            window.reduxActions.conversations.showConversation({
-              conversationId: targetConversation.id,
-            });
+            if (!headless) {
+              window.reduxActions.conversations.showConversation({
+                conversationId: targetConversation.id,
+              });
+            }
           } catch (error) {
             // Delete newly-created conversation if we encountered any errors
             if (tempConversation) {
@@ -382,6 +422,12 @@ export async function joinViaLink(value: string): Promise<void> {
     }
   };
 
+  if (headless) {
+    void join();
+    await promise;
+    return;
+  }
+
   // Initial add to redux, with basic group information
   window.reduxActions.conversations.setPreJoinConversation(
     getPreJoinConversation()
@@ -390,7 +436,6 @@ export async function joinViaLink(value: string): Promise<void> {
   log.info(`${logId}: Showing modal`);
 
   const groupV2InfoNode = document.createElement('div');
-  let groupV2InfoRoot: Root | undefined;
 
   groupV2InfoRoot = createRoot(groupV2InfoNode);
   groupV2InfoRoot.render(

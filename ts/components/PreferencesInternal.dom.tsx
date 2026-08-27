@@ -32,6 +32,10 @@ import { AxoSwitch } from '../axo/AxoSwitch.dom.tsx';
 import type { VisibleRemoteMegaphoneType } from '../types/Megaphone.std.ts';
 import { internalGetTestMegaphone } from '../util/getTestMegaphone.std.ts';
 import type { ConversationJobQueueDebugSnapshot } from '../types/ConversationJobQueueDebug.std.ts';
+import type {
+  GroupJoinLeaveTestOptions,
+  GroupJoinLeaveTestSnapshot,
+} from '../types/GroupJoinLeaveTest.std.ts';
 import { drop } from '../util/drop.std.ts';
 import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
 
@@ -292,6 +296,132 @@ function ConversationJobQueueDebugger({
   );
 }
 
+function GroupJoinLeaveTester({
+  getSnapshot,
+  start,
+  stop,
+}: {
+  getSnapshot: () => GroupJoinLeaveTestSnapshot;
+  start: (options: GroupJoinLeaveTestOptions) => GroupJoinLeaveTestSnapshot;
+  stop: () => GroupJoinLeaveTestSnapshot;
+}): JSX.Element {
+  const [inviteLink, setInviteLink] = useState('');
+  const [intervalMs, setIntervalMs] = useState('100');
+  const [snapshot, setSnapshot] = useState(getSnapshot);
+  const [controlError, setControlError] = useState<string>();
+
+  useEffect(() => {
+    const interval = setInterval(() => setSnapshot(getSnapshot()), SECOND);
+    return () => clearInterval(interval);
+  }, [getSnapshot]);
+
+  const handleStart = useCallback(() => {
+    setControlError(undefined);
+    try {
+      const parsedInterval = Number(intervalMs);
+      if (!Number.isFinite(parsedInterval)) {
+        throw new Error('Interval must be a number');
+      }
+      setSnapshot(
+        start({
+          inviteLink,
+          intervalMs: Math.max(100, parsedInterval),
+        })
+      );
+    } catch (error) {
+      setControlError(toLogFormat(error));
+    }
+  }, [intervalMs, inviteLink, start]);
+
+  const handleStop = useCallback(() => {
+    setSnapshot(stop());
+  }, [stop]);
+
+  return (
+    <SettingsRow title="Group join/leave loop">
+      <p className="Preferences__padding">
+        Repeatedly joins through a group invite link, waits, leaves, waits, and
+        joins again. The link must allow joining without administrator approval.
+        The loop is temporary and stops when the app restarts or the active
+        account changes.
+      </p>
+      <div className="Preferences__padding">
+        <label htmlFor="internal-group-join-leave-link">
+          Group invite link
+        </label>
+        <input
+          id="internal-group-join-leave-link"
+          aria-label="Group invite link"
+          type="url"
+          autoComplete="off"
+          disabled={snapshot.running}
+          onChange={event => setInviteLink(event.target.value)}
+          placeholder="https://signal.group/#..."
+          spellCheck={false}
+          style={{ width: '100%' }}
+          value={inviteLink}
+        />
+      </div>
+      <FlowingSettingsControl>
+        <div className="Preferences__two-thirds-flow">
+          <label htmlFor="internal-group-join-leave-interval">
+            Delay between transitions (minimum 100 ms)
+          </label>
+          <input
+            id="internal-group-join-leave-interval"
+            aria-label="Delay between transitions in milliseconds"
+            type="number"
+            disabled={snapshot.running}
+            min={100}
+            max={3600000}
+            onChange={event => setIntervalMs(event.target.value)}
+            value={intervalMs}
+          />
+        </div>
+        <div
+          className={classNames(
+            'Preferences__flow-button',
+            'Preferences__one-third-flow',
+            'Preferences__one-third-flow--align-right'
+          )}
+        >
+          {snapshot.running ? (
+            <AxoButton.Root
+              variant="destructive"
+              size="lg"
+              disabled={snapshot.phase === 'stopping'}
+              onClick={handleStop}
+            >
+              {snapshot.phase === 'stopping' ? 'Stopping…' : 'Stop loop'}
+            </AxoButton.Root>
+          ) : (
+            <AxoButton.Root
+              variant="secondary"
+              size="lg"
+              disabled={!inviteLink.trim()}
+              onClick={handleStart}
+            >
+              Start loop
+            </AxoButton.Root>
+          )}
+        </div>
+      </FlowingSettingsControl>
+      <div className="Preferences--internal--result">
+        <p>
+          Status: <strong>{snapshot.phase}</strong>
+          {snapshot.groupTitle ? ` · Group: ${snapshot.groupTitle}` : ''}
+        </p>
+        <p>
+          Joins: {snapshot.completedJoins} · Leaves: {snapshot.completedLeaves}{' '}
+          · Failures: {snapshot.failedOperations}
+        </p>
+        {snapshot.lastError ? <p>Error: {snapshot.lastError}</p> : null}
+        {controlError ? <p>Error: {controlError}</p> : null}
+      </div>
+    </SettingsRow>
+  );
+}
+
 export function PreferencesInternal({
   i18n,
   validateBackup: doValidateBackup,
@@ -309,6 +439,9 @@ export function PreferencesInternal({
   getConversationJobQueueDebugSnapshot,
   clearConversationJobQueue,
   setConversationJobQueueConcurrency,
+  getGroupJoinLeaveTestSnapshot,
+  startGroupJoinLeaveTest,
+  stopGroupJoinLeaveTest,
 
   dredDuration,
   setDredDuration,
@@ -352,6 +485,11 @@ export function PreferencesInternal({
   getConversationJobQueueDebugSnapshot: () => Promise<ConversationJobQueueDebugSnapshot>;
   clearConversationJobQueue: (conversationId?: string) => Promise<number>;
   setConversationJobQueueConcurrency: (concurrency: number) => void;
+  getGroupJoinLeaveTestSnapshot: () => GroupJoinLeaveTestSnapshot;
+  startGroupJoinLeaveTest: (
+    options: GroupJoinLeaveTestOptions
+  ) => GroupJoinLeaveTestSnapshot;
+  stopGroupJoinLeaveTest: () => GroupJoinLeaveTestSnapshot;
   dredDuration: number | undefined;
   setDredDuration: (value: number | undefined) => void;
   isDirectVp9Enabled: boolean | undefined;
@@ -604,6 +742,11 @@ export function PreferencesInternal({
         getSnapshot={getConversationJobQueueDebugSnapshot}
         clearQueue={clearConversationJobQueue}
         setConcurrency={setConversationJobQueueConcurrency}
+      />
+      <GroupJoinLeaveTester
+        getSnapshot={getGroupJoinLeaveTestSnapshot}
+        start={startGroupJoinLeaveTest}
+        stop={stopGroupJoinLeaveTest}
       />
       <SettingsRow
         className="Preferences--internal--backups"

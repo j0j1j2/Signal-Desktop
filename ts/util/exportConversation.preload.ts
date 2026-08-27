@@ -15,6 +15,7 @@ import { showSaveDialog } from '../windows/main/attachments.preload.ts';
 import {
   CONVERSATION_EXPORT_FORMAT,
   CONVERSATION_EXPORT_VERSION,
+  createConversationExportParticipantIdAssigner,
   getConversationExportFilename,
   getConversationExportMessage,
   stringifyConversationExportValue,
@@ -37,14 +38,15 @@ export type ExportConversationResult = Readonly<{
 }>;
 
 function getSender(
-  message: ReadonlyDeep<MessageAttributesType>
+  message: ReadonlyDeep<MessageAttributesType>,
+  getParticipantId: (identity: string | undefined) => string | undefined,
+  ourConversationId: string,
+  ourName: string
 ): ConversationExportSender {
   const isOutgoing = message.type === 'outgoing';
   let direction: ConversationExportSender['direction'] = 'system';
-  if (isOutgoing) {
-    direction = 'outgoing';
-  } else if (message.type === 'incoming') {
-    direction = 'incoming';
+  if (isOutgoing || message.type === 'incoming') {
+    direction = 'message';
   }
 
   const serviceId = message.sourceServiceId;
@@ -57,7 +59,12 @@ function getSender(
 
   return {
     direction,
-    name: isOutgoing ? 'You' : senderConversation?.getTitle(),
+    id: getParticipantId(
+      isOutgoing
+        ? ourConversationId
+        : (senderConversation?.id ?? serviceId ?? message.source)
+    ),
+    name: isOutgoing ? ourName : senderConversation?.getTitle(),
   };
 }
 
@@ -104,6 +111,11 @@ export async function exportConversationToDisk(
   let exportedMessageCount = 0;
   let wroteMessage = false;
   let hasMore = true;
+  const getParticipantId = createConversationExportParticipantIdAssigner();
+  const ourConversation =
+    window.ConversationController.getOurConversationOrThrow();
+  const ourName =
+    ourConversation.getProfileName() ?? ourConversation.getTitle();
   let cursor:
     | Readonly<{ id: string; receivedAt: number; sentAt: number }>
     | undefined;
@@ -144,7 +156,7 @@ export async function exportConversationToDisk(
       for (const message of page) {
         const exportedMessage = getConversationExportMessage(
           message,
-          getSender(message)
+          getSender(message, getParticipantId, ourConversation.id, ourName)
         );
         const serialized = stringifyConversationExportValue(exportedMessage)
           .split('\n')

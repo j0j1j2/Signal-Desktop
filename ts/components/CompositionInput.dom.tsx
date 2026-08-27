@@ -73,6 +73,7 @@ import { getClassNamesFor } from '../util/getClassNamesFor.std.ts';
 import { isNotNil } from '../util/isNotNil.std.ts';
 import { createLogger } from '../logging/log.std.ts';
 import type { LinkPreviewForUIType } from '../types/message/LinkPreviews.std.ts';
+import type { LinkPreviewEditType } from '../types/LinkPreview.std.ts';
 import { StagedLinkPreview } from './conversation/StagedLinkPreview.dom.tsx';
 import type { DraftEditMessageType } from '../model-types.d.ts';
 import { usePreviousDeprecated } from '../hooks/usePrevious.std.ts';
@@ -172,6 +173,10 @@ export type Props = Readonly<{
   linkPreviewLoading?: boolean;
   linkPreviewResult: LinkPreviewForUIType | null;
   onCloseLinkPreview?: (conversationId: string) => unknown;
+  onEditLinkPreview?: (
+    conversationId: string,
+    edit: LinkPreviewEditType
+  ) => Promise<void>;
   showViewOnceButton: boolean;
   isViewOnceActive: boolean;
   onToggleViewOnce: () => void;
@@ -197,6 +202,7 @@ export function CompositionInput(props: Props): ReactElement {
     linkPreviewResult,
     moduleClassName,
     onCloseLinkPreview,
+    onEditLinkPreview,
     onBlur,
     onFocus,
     onSelectEmoji,
@@ -1041,6 +1047,9 @@ export function CompositionInput(props: Props): ReactElement {
                 moduleClassName="CompositionInput__link-preview"
                 i18n={i18n}
                 onClose={() => onCloseLinkPreview?.(conversationId)}
+                onEdit={edit =>
+                  onEditLinkPreview?.(conversationId, edit) ?? Promise.resolve()
+                }
               />
             )}
             {children}

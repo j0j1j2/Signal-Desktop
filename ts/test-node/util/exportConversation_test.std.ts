@@ -6,6 +6,7 @@ import type { MessageAttributesType } from '../../model-types.d.ts';
 import { DurationInSeconds } from '../../util/durations/index.std.ts';
 import {
   conversationExportJsonReplacer,
+  createConversationExportParticipantIdAssigner,
   getConversationExportFilename,
   getConversationExportMessage,
   stringifyConversationExportValue,
@@ -76,12 +77,14 @@ describe('exportConversation', () => {
         logger: { ignored: true },
       }),
       {
-        direction: 'incoming',
+        direction: 'message',
+        id: 'participant-1',
         name: 'Alice',
       }
     );
 
-    assert.equal(result.direction, 'incoming');
+    assert.equal(result.direction, 'message');
+    assert.equal(result.senderId, 'participant-1');
     assert.equal(result.senderName, 'Alice');
     const attributes = result.attributes as Record<string, unknown>;
     assert.equal(attributes.body, 'hello');
@@ -112,6 +115,57 @@ describe('exportConversation', () => {
     ]) {
       assert.notInclude(json, privateValue);
     }
+  });
+
+  it('assigns stable anonymous ids to participants with the same name', () => {
+    const getParticipantId = createConversationExportParticipantIdAssigner();
+    const firstId = getParticipantId('alice-private-aci');
+    const secondId = getParticipantId('bob-private-aci');
+
+    assert.equal(firstId, 'participant-1');
+    assert.equal(secondId, 'participant-2');
+    assert.equal(getParticipantId('alice-private-aci'), firstId);
+    assert.isUndefined(getParticipantId(undefined));
+
+    const firstMessage = getConversationExportMessage(message(), {
+      direction: 'message',
+      id: firstId,
+      name: 'Same nickname',
+    });
+    const secondMessage = getConversationExportMessage(message(), {
+      direction: 'message',
+      id: secondId,
+      name: 'Same nickname',
+    });
+
+    assert.equal(firstMessage.senderName, secondMessage.senderName);
+    assert.notEqual(firstMessage.senderId, secondMessage.senderId);
+    assert.notInclude(
+      stringifyConversationExportValue([firstMessage, secondMessage]),
+      'private-aci'
+    );
+  });
+
+  it('exports our profile name without identifying the exporter', () => {
+    const result = getConversationExportMessage(message({ type: 'outgoing' }), {
+      direction: 'message',
+      id: 'participant-2',
+      name: 'My Profile Name',
+    });
+
+    assert.equal(result.direction, 'message');
+    assert.equal(result.senderId, 'participant-2');
+    assert.equal(result.senderName, 'My Profile Name');
+    assert.deepEqual(result.attributes, {
+      type: 'message',
+      sentAt: 2,
+      receivedAt: 1,
+    });
+
+    const json = stringifyConversationExportValue(result);
+    assert.notInclude(json, 'self');
+    assert.notInclude(json, 'You');
+    assert.notInclude(json, 'outgoing');
   });
 
   it('encodes bigint and bytes as tagged JSON values', () => {

@@ -1082,6 +1082,17 @@ $message-padding-horizontal: 12px;
   margin-bottom: 3px;
 }
 
+.module-message__author-blocked-label {
+  margin-inline-start: 4px;
+
+  @include mixins.light-theme {
+    color: variables.$color-gray-60;
+  }
+  @include mixins.dark-theme {
+    color: variables.$color-gray-25;
+  }
+}
+
 .module-message__author_with_sticker {
   @include mixins.font-body-small-bold;
 
@@ -1738,6 +1749,11 @@ $message-padding-horizontal: 12px;
 
   &--with-reactions {
     padding-bottom: 15px;
+  }
+
+  &--blocked .module-Avatar {
+    border-radius: 100%;
+    box-shadow: 0 0 0 2px variables.$color-crimson;
   }
 
   &--typing {

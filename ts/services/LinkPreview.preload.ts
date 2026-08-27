@@ -11,6 +11,7 @@ import type {
   LinkPreviewSourceType,
   MaybeGrabLinkPreviewOptionsType,
   AddLinkPreviewOptionsType,
+  LinkPreviewEditType,
 } from '../types/LinkPreview.std.ts';
 import type { LinkPreviewImage as LinkPreviewFetchImage } from '../linkPreviews/linkPreviewFetch.preload.ts';
 import * as Errors from '../types/errors.std.ts';
@@ -61,6 +62,7 @@ let disableLinkPreviews = false;
 let excludedPreviewUrls: Array<string> = [];
 let linkPreviewAbortController: AbortController | undefined;
 let linkPreviewResult: Array<LinkPreviewResult> | undefined;
+let allowPreviewUrlNotInMessage = false;
 
 export function suspendLinkPreviews(): void {
   disableLinkPreviews = true;
@@ -133,16 +135,104 @@ export function resetLinkPreview(conversationId?: string): void {
 
 export function removeLinkPreview(conversationId?: string): void {
   (linkPreviewResult || []).forEach((item: LinkPreviewResult) => {
-    if (item.url) {
-      URL.revokeObjectURL(item.url);
+    if (item.image?.url) {
+      URL.revokeObjectURL(item.image.url);
     }
   });
   linkPreviewResult = undefined;
+  allowPreviewUrlNotInMessage = false;
   currentlyMatchedLink = undefined;
   linkPreviewAbortController?.abort();
   linkPreviewAbortController = undefined;
 
   window.reduxActions.linkPreviews.removeLinkPreview(conversationId);
+}
+
+export async function updateLinkPreview(
+  conversationId: string,
+  edit: LinkPreviewEditType
+): Promise<void> {
+  const current = linkPreviewResult?.[0];
+  if (!current) {
+    throw new Error('Cannot edit a link preview before it has loaded');
+  }
+
+  const url = edit.url.trim();
+  if (!LinkPreview.isValidLink(url)) {
+    throw new Error('Link preview URL must be a valid HTTPS URL');
+  }
+
+  let image = current.image;
+  if (edit.image !== undefined) {
+    const nextImage = edit.image
+      ? await processLinkPreviewImage(edit.image)
+      : undefined;
+    if (image?.url) {
+      URL.revokeObjectURL(image.url);
+    }
+    image = nextImage;
+  }
+
+  const updated: LinkPreviewResult = {
+    ...current,
+    url,
+    title: edit.title.trim() || null,
+    description: edit.description.trim() || null,
+    image,
+  };
+
+  linkPreviewResult = [updated];
+  allowPreviewUrlNotInMessage = url !== currentlyMatchedLink;
+  window.reduxActions.linkPreviews.addLinkPreview(
+    {
+      ...updated,
+      title: dropNull(updated.title),
+      description: dropNull(updated.description),
+      date: dropNull(updated.date),
+      domain: LinkPreview.getDomain(updated.url),
+      isStickerPack: LinkPreview.isStickerPack(updated.url),
+      isCallLink: LinkPreview.isCallLink(updated.url),
+    },
+    LinkPreview.LinkPreviewSourceType.Composer,
+    conversationId
+  );
+}
+
+async function processLinkPreviewImage(file: File): Promise<LinkPreviewImage> {
+  const originalData = await fileToBytes(file);
+  const contentType = sniffImageMimeType(originalData);
+  if (!contentType) {
+    throw new Error('The selected link preview image is not supported');
+  }
+
+  const withBlob = await autoScale({
+    contentType,
+    file,
+    highQuality: true,
+  });
+  const data = await fileToBytes(withBlob.file);
+  const objectUrl = URL.createObjectURL(withBlob.file);
+
+  try {
+    const blurHash = await imageToBlurHash(withBlob.file);
+    const dimensions = await VisualAttachment.getImageDimensions({
+      objectUrl,
+      logger: log,
+    });
+
+    return {
+      data,
+      size: data.byteLength,
+      ...dimensions,
+      plaintextHash: Bytes.toHex(sha256(data)),
+      contentType: stringToMIMEType(withBlob.file.type) || contentType,
+      blurHash,
+      url: objectUrl,
+    };
+  } catch (error) {
+    URL.revokeObjectURL(objectUrl);
+    throw error;
+  }
 }
 
 async function addLinkPreview(
@@ -156,12 +246,13 @@ async function addLinkPreview(
   }
 
   (linkPreviewResult || []).forEach((item: LinkPreviewResult) => {
-    if (item.url) {
-      URL.revokeObjectURL(item.url);
+    if (item.image?.url) {
+      URL.revokeObjectURL(item.image.url);
     }
   });
   window.reduxActions.linkPreviews.removeLinkPreview(conversationId);
   linkPreviewResult = undefined;
+  allowPreviewUrlNotInMessage = false;
 
   // Cancel other in-flight link preview requests.
   if (linkPreviewAbortController) {
@@ -215,6 +306,29 @@ async function addLinkPreview(
       //    user changed the link (e.g., by continuing to type the URL)
       const failedToFetch = currentlyMatchedLink === url;
       if (failedToFetch) {
+        if (source === LinkPreview.LinkPreviewSourceType.Composer) {
+          const fallback: LinkPreviewResult = {
+            title: null,
+            url,
+            description: null,
+            date: null,
+          };
+          window.reduxActions.linkPreviews.addLinkPreview(
+            {
+              ...fallback,
+              title: dropNull(fallback.title),
+              description: dropNull(fallback.description),
+              date: dropNull(fallback.date),
+              domain: LinkPreview.getDomain(url),
+              isStickerPack: LinkPreview.isStickerPack(url),
+              isCallLink: LinkPreview.isCallLink(url),
+            },
+            source,
+            conversationId
+          );
+          linkPreviewResult = [fallback];
+          return;
+        }
         excludedPreviewUrls.push(url);
         removeLinkPreview(conversationId);
       }
@@ -277,7 +391,10 @@ export function getLinkPreviewForSend(
       // This bullet-proofs against sending link previews for URLs that are no longer in
       //   the message. This can happen if you have a link preview, then quickly delete
       //   the link and send the message.
-      .filter(({ url }: Readonly<{ url: string }>) => urlsInMessage.has(url))
+      .filter(
+        ({ url }: Readonly<{ url: string }>) =>
+          allowPreviewUrlNotInMessage || urlsInMessage.has(url)
+      )
       .map(sanitizeLinkPreview)
   );
 }

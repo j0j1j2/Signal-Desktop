@@ -32,6 +32,14 @@ export type LinkPreviewResult = {
   date: number | null;
 };
 
+export type LinkPreviewEditType = Readonly<{
+  url: string;
+  title: string;
+  description: string;
+  // undefined keeps the current image, null removes it, and File replaces it.
+  image: File | null | undefined;
+}>;
+
 export enum LinkPreviewSourceType {
   Composer,
   ForwardMessageModal,

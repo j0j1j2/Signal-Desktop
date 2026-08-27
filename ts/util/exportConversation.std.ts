@@ -18,9 +18,31 @@ export type ConversationExportMetadata = Readonly<{
 }>;
 
 export type ConversationExportSender = Readonly<{
-  direction: 'incoming' | 'outgoing' | 'system';
+  direction: 'message' | 'system';
+  id?: string;
   name?: string;
 }>;
+
+export function createConversationExportParticipantIdAssigner(): (
+  identity: string | undefined
+) => string | undefined {
+  const participantIds = new Map<string, string>();
+
+  return identity => {
+    if (!identity) {
+      return undefined;
+    }
+
+    const existingId = participantIds.get(identity);
+    if (existingId) {
+      return existingId;
+    }
+
+    const participantId = `participant-${participantIds.size + 1}`;
+    participantIds.set(identity, participantId);
+    return participantId;
+  };
+}
 
 function withoutUndefined(
   value: Record<string, unknown>
@@ -157,7 +179,10 @@ function getSafeAttributes(
     : undefined;
 
   return withoutUndefined({
-    type: message.type,
+    type:
+      message.type === 'incoming' || message.type === 'outgoing'
+        ? 'message'
+        : message.type,
     sentAt: message.sent_at,
     receivedAt: message.received_at,
     receivedAtMs: message.received_at_ms,
@@ -233,6 +258,7 @@ export function getConversationExportMessage(
 ): Readonly<Record<string, unknown>> {
   return withoutUndefined({
     direction: sender.direction,
+    senderId: sender.id,
     senderName: sender.name,
     attributes: getSafeAttributes(message),
   });

@@ -672,6 +672,28 @@ export default {
     setConversationJobQueueConcurrency: action(
       'setConversationJobQueueConcurrency'
     ),
+    getGroupJoinLeaveTestSnapshot: () => ({
+      running: false,
+      phase: 'idle',
+      completedJoins: 0,
+      completedLeaves: 0,
+      failedOperations: 0,
+    }),
+    startGroupJoinLeaveTest: options => ({
+      running: true,
+      phase: 'joining',
+      intervalMs: options.intervalMs,
+      completedJoins: 0,
+      completedLeaves: 0,
+      failedOperations: 0,
+    }),
+    stopGroupJoinLeaveTest: () => ({
+      running: false,
+      phase: 'idle',
+      completedJoins: 0,
+      completedLeaves: 0,
+      failedOperations: 0,
+    }),
     dredDuration: 0,
     setDredDuration: action('setDredDuration'),
     directMaxBitrate: 1000000,

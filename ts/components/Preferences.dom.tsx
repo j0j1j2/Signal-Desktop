@@ -105,6 +105,10 @@ import type { PreferredBadgeSelectorType } from '../state/selectors/badges.prelo
 import { Emoji } from '../axo/emoji.std.ts';
 import { AxoConfirmDialog } from '../axo/AxoConfirmDialog.dom.tsx';
 import type { ConversationJobQueueDebugSnapshot } from '../types/ConversationJobQueueDebug.std.ts';
+import type {
+  GroupJoinLeaveTestOptions,
+  GroupJoinLeaveTestSnapshot,
+} from '../types/GroupJoinLeaveTest.std.ts';
 
 const { isNumber, noop, partition } = lodash;
 
@@ -274,6 +278,11 @@ type PropsFunctionType = {
   getConversationJobQueueDebugSnapshot: () => Promise<ConversationJobQueueDebugSnapshot>;
   clearConversationJobQueue: (conversationId?: string) => Promise<number>;
   setConversationJobQueueConcurrency: (concurrency: number) => void;
+  getGroupJoinLeaveTestSnapshot: () => GroupJoinLeaveTestSnapshot;
+  startGroupJoinLeaveTest: (
+    options: GroupJoinLeaveTestOptions
+  ) => GroupJoinLeaveTestSnapshot;
+  stopGroupJoinLeaveTest: () => GroupJoinLeaveTestSnapshot;
   getPreferredBadge: PreferredBadgeSelectorType;
   resumeBackupMediaDownload: () => void;
   pauseBackupMediaDownload: () => void;
@@ -448,6 +457,9 @@ export function Preferences({
   getConversationJobQueueDebugSnapshot,
   clearConversationJobQueue,
   setConversationJobQueueConcurrency,
+  getGroupJoinLeaveTestSnapshot,
+  startGroupJoinLeaveTest,
+  stopGroupJoinLeaveTest,
   getMessageCountBySchemaVersion,
   getMessageSampleForSchemaVersion,
   getPreferredBadge,
@@ -2557,6 +2569,9 @@ export function Preferences({
             setConversationJobQueueConcurrency={
               setConversationJobQueueConcurrency
             }
+            getGroupJoinLeaveTestSnapshot={getGroupJoinLeaveTestSnapshot}
+            startGroupJoinLeaveTest={startGroupJoinLeaveTest}
+            stopGroupJoinLeaveTest={stopGroupJoinLeaveTest}
             donationReceipts={donationReceipts}
             internalAddDonationReceipt={internalAddDonationReceipt}
             saveAttachmentToDisk={saveAttachmentToDisk}

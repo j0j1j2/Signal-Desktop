@@ -203,6 +203,7 @@ export const SmartCompositionArea = memo(function SmartCompositionArea({
   const {
     onTextTooLong,
     onCloseLinkPreview,
+    onEditLinkPreview,
     addAttachment,
     removeAttachment,
     onClearAttachments,
@@ -278,6 +279,7 @@ export const SmartCompositionArea = memo(function SmartCompositionArea({
       pushPanelForConversation={pushPanelForConversation}
       discardEditMessage={discardEditMessage}
       onCloseLinkPreview={onCloseLinkPreview}
+      onEditLinkPreview={onEditLinkPreview}
       onEditorStateChange={onEditorStateChange}
       // MediaEditor
       conversationSelector={conversationSelector}

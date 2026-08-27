@@ -7,8 +7,6 @@ import { isMoreRecentThan } from './timestamp.std.ts';
 import { isOutgoing, isPoll } from '../messages/helpers.std.ts';
 import { isMessageNoteToSelf } from './isMessageNoteToSelf.dom.ts';
 
-export const MESSAGE_MAX_EDIT_COUNT = 10;
-
 export function canEditMessage(
   message: ReadonlyMessageAttributesType
 ): boolean {
@@ -19,14 +17,5 @@ export function canEditMessage(
     !isPoll(message) &&
     (isMoreRecentThan(message.sent_at, DAY) || isMessageNoteToSelf(message)) &&
     Boolean(message.body)
-  );
-}
-
-export function isWithinMaxEdits(
-  message: ReadonlyMessageAttributesType
-): boolean {
-  return (
-    isMessageNoteToSelf(message) ||
-    (message.editHistory?.length ?? 0) <= MESSAGE_MAX_EDIT_COUNT
   );
 }

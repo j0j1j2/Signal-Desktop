@@ -1540,7 +1540,6 @@ export const getOtherTabsUnreadStats = createSelector(
   }
 );
 
-// Note that this doesn't take into account max edit count. See canEditMessage.
 export const getLastEditableMessageId = createSelector(
   getConversationMessages,
   getMessages,

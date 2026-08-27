@@ -40,7 +40,10 @@ import {
   ADD_PREVIEW as ADD_LINK_PREVIEW,
   REMOVE_PREVIEW as REMOVE_LINK_PREVIEW,
 } from './linkPreviews.preload.ts';
-import { LinkPreviewSourceType } from '../../types/LinkPreview.std.ts';
+import {
+  LinkPreviewSourceType,
+  type LinkPreviewEditType,
+} from '../../types/LinkPreview.std.ts';
 import type { AciString } from '../../types/ServiceId.std.ts';
 import { completeRecording, getIsRecording } from './audioRecorder.preload.ts';
 import { SHOW_TOAST, showToast } from './toast.preload.ts';
@@ -58,6 +61,7 @@ import {
   removeLinkPreview,
   resetLinkPreview,
   suspendLinkPreviews,
+  updateLinkPreview,
 } from '../../services/LinkPreview.preload.ts';
 import {
   getAttachmentSizeLimit,
@@ -68,7 +72,6 @@ import { getValue as getRemoteConfigValue } from '../../RemoteConfig.dom.ts';
 import { getRecipientsByConversation } from '../../util/getRecipientsByConversation.dom.ts';
 import { processAttachment } from '../../util/processAttachment.preload.ts';
 import { hasDraftAttachments } from '../../util/hasDraftAttachments.std.ts';
-import { isFileDangerous } from '../../util/isFileDangerous.std.ts';
 import { stringToMIMEType } from '../../types/MIME.std.ts';
 import { isNotNil } from '../../util/isNotNil.std.ts';
 import { replaceIndex } from '../../util/replaceIndex.std.ts';
@@ -269,6 +272,7 @@ export const actions = {
   onClearDraft,
   onClearAttachments,
   onCloseLinkPreview,
+  onEditLinkPreview,
   onEditorStateChange,
   onTextTooLong,
   processAttachments,
@@ -356,6 +360,16 @@ function onCloseLinkPreview(conversationId: string): NoopActionType {
   removeLinkPreview(conversationId);
 
   return noopAction('onCloseLinkPreview');
+}
+
+function onEditLinkPreview(
+  conversationId: string,
+  edit: LinkPreviewEditType
+): ThunkAction<Promise<void>, RootStateType, unknown, NoopActionType> {
+  return async dispatch => {
+    await updateLinkPreview(conversationId, edit);
+    dispatch(noopAction('onEditLinkPreview'));
+  };
 }
 
 function onTextTooLong(): ShowToastActionType {
@@ -1294,10 +1308,6 @@ function preProcessAttachment(
 ): AnyToast | undefined {
   if (!file) {
     return;
-  }
-
-  if (isFileDangerous(file.name)) {
-    return { toastType: ToastType.DangerousFileType };
   }
 
   if (draftAttachments.length >= 32) {

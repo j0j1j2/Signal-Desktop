@@ -250,6 +250,7 @@ export type PropsData = {
     | 'firstName'
     | 'hasAvatar'
     | 'id'
+    | 'isBlocked'
     | 'isMe'
     | 'phoneNumber'
     | 'profileName'
@@ -361,6 +362,8 @@ export type PropsHousekeeping = {
 };
 
 export type PropsActions = {
+  acceptConversation?: (conversationId: string) => void;
+  blockConversation?: (conversationId: string) => void;
   clearTargetedMessage: () => unknown;
   doubleCheckMissingQuoteReference: (messageId: string) => unknown;
   messageExpanded: (id: string, displayLimit: number) => unknown;
@@ -1182,6 +1185,11 @@ export class Message extends PureComponent<Props, State> {
           title={author.isMe ? i18n('icu:you') : author.title}
           module={moduleName}
         />
+        {author.isBlocked && !author.isMe ? (
+          <span className="module-message__author-blocked-label">
+            {i18n('icu:Message__blocked-label')}
+          </span>
+        ) : null}
       </div>
     );
   }
@@ -2323,7 +2331,9 @@ export class Message extends PureComponent<Props, State> {
 
   #renderAvatar(): ReactNode {
     const {
+      acceptConversation,
       author,
+      blockConversation,
       conversationId,
       conversationType,
       direction,
@@ -2344,8 +2354,27 @@ export class Message extends PureComponent<Props, State> {
         className={classNames('module-message__author-avatar-container', {
           'module-message__author-avatar-container--with-reactions':
             this.#hasReactions(),
+          'module-message__author-avatar-container--blocked':
+            author.isBlocked && !shouldCollapseBelow,
         })}
         inert={isSelectMode ? true : undefined}
+        onContextMenu={
+          !author.isMe &&
+          !shouldCollapseBelow &&
+          acceptConversation &&
+          blockConversation
+            ? event => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (author.isBlocked) {
+                  acceptConversation(author.id);
+                } else {
+                  blockConversation(author.id);
+                }
+              }
+            : undefined
+        }
       >
         {shouldCollapseBelow ? (
           <AvatarSpacer size={GROUP_AVATAR_SIZE} />

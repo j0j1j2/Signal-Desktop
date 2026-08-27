@@ -118,6 +118,7 @@ import type { SmartPreferencesEditChatFolderPageProps } from './PreferencesEditC
 import type { ExternalProps as SmartNotificationProfilesProps } from './PreferencesNotificationProfiles.preload.tsx';
 import { useMegaphonesActions } from '../ducks/megaphones.preload.ts';
 import type { ZoomFactorType } from '../../types/StorageKeys.std.ts';
+import { groupJoinLeaveTest } from '../../services/groupJoinLeaveTest.preload.ts';
 import { isLocalBackupsEnabled } from '../../util/isLocalBackupsEnabled.preload.ts';
 import { getBackupKeyHash } from '../../services/backups/crypto.preload.ts';
 import { Emoji } from '../../axo/emoji.std.ts';
@@ -980,6 +981,9 @@ export function SmartPreferences(): JSX.Element | null {
         setConversationJobQueueConcurrency={concurrency =>
           conversationJobQueue.setDebugConcurrency(concurrency)
         }
+        getGroupJoinLeaveTestSnapshot={() => groupJoinLeaveTest.getSnapshot()}
+        startGroupJoinLeaveTest={options => groupJoinLeaveTest.start(options)}
+        stopGroupJoinLeaveTest={() => groupJoinLeaveTest.stop()}
         getPreferredBadge={getPreferredBadge}
         hasAnyCurrentCustomChatFolders={hasAnyCurrentCustomChatFolders}
         hasAudioNotifications={hasAudioNotifications}

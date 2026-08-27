@@ -15,7 +15,7 @@ import { ErrorWithToast } from '../types/ErrorWithToast.std.ts';
 import { SendStatus } from '../messages/MessageSendState.std.ts';
 import { ToastType } from '../types/Toast.dom.tsx';
 import type { AciString } from '../types/ServiceId.std.ts';
-import { canEditMessage, isWithinMaxEdits } from './canEditMessage.dom.ts';
+import { canEditMessage } from './canEditMessage.dom.ts';
 import {
   conversationJobQueue,
   conversationQueueJobEnum,
@@ -84,10 +84,7 @@ export async function sendEditedMessage(
     return;
   }
 
-  if (
-    !canEditMessage(targetMessage.attributes) ||
-    !isWithinMaxEdits(targetMessage.attributes)
-  ) {
+  if (!canEditMessage(targetMessage.attributes)) {
     throw new ErrorWithToast(
       `${idLog}: cannot edit`,
       ToastType.CannotEditMessage

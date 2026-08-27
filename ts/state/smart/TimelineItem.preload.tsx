@@ -157,7 +157,9 @@ export const SmartTimelineItem = memo(function SmartTimelineItem(
       item.messages.some(message => selectedMessageIds?.includes(message.id)));
 
   const {
+    acceptConversation,
     blockGroupLinkRequests,
+    blockConversation,
     cancelAttachmentDownload,
     clearTargetedMessage: clearSelectedMessage,
     copyMessageText,
@@ -272,6 +274,8 @@ export const SmartTimelineItem = memo(function SmartTimelineItem(
       theme={theme}
       platform={platform}
       blockGroupLinkRequests={blockGroupLinkRequests}
+      acceptConversation={acceptConversation}
+      blockConversation={blockConversation}
       checkForAccount={checkForAccount}
       clearTargetedMessage={clearSelectedMessage}
       doubleCheckMissingQuoteReference={doubleCheckMissingQuoteReference}

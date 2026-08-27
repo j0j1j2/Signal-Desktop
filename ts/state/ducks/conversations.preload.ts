@@ -35,14 +35,12 @@ import { getLocalAttachmentUrl } from '../../util/getLocalAttachmentUrl.std.ts';
 import { instance as libphonenumberInstance } from '../../util/libphonenumberInstance.std.ts';
 import {
   type ShowSendAnywayDialogActionType,
-  type ShowErrorModalActionType,
   type ShowTerminateGroupFailedModalActionType,
   type ToggleDiscardDraftDialogActionType,
 } from './globalModals.preload.ts';
 import {
   SHOW_SEND_ANYWAY_DIALOG,
   SHOW_TERMINATE_GROUP_FAILED_MODAL,
-  SHOW_ERROR_MODAL,
   TOGGLE_DISCARD_DRAFT_DIALOG,
 } from './globalModals.preload.ts';
 import {
@@ -190,11 +188,7 @@ import {
 } from './composer.preload.ts';
 import { ReceiptType } from '../../types/Receipt.std.ts';
 import { Sound, SoundType } from '../../util/Sound.std.ts';
-import {
-  canEditMessage,
-  isWithinMaxEdits,
-  MESSAGE_MAX_EDIT_COUNT,
-} from '../../util/canEditMessage.dom.ts';
+import { canEditMessage } from '../../util/canEditMessage.dom.ts';
 import { changeLocation, popPanelForConversation } from './nav.std.ts';
 import {
   NavTab,
@@ -2011,9 +2005,7 @@ function setMessageToEdit(
   void,
   RootStateType,
   unknown,
-  | SetFocusActionType
-  | ShowErrorModalActionType
-  | ToggleDiscardDraftDialogActionType
+  SetFocusActionType | ToggleDiscardDraftDialogActionType
 > {
   return async (dispatch, getState) => {
     const conversation = window.ConversationController.get(conversationId);
@@ -2036,20 +2028,6 @@ function setMessageToEdit(
     }
 
     if (!canEditMessage(message) || !message.body) {
-      return;
-    }
-
-    if (!isWithinMaxEdits(message)) {
-      const i18n = getIntl(getState());
-      dispatch({
-        type: SHOW_ERROR_MODAL,
-        payload: {
-          title: i18n('icu:MessageMaxEditsModal__Title'),
-          description: i18n('icu:MessageMaxEditsModal__Description', {
-            max: MESSAGE_MAX_EDIT_COUNT,
-          }),
-        },
-      });
       return;
     }
 

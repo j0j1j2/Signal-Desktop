@@ -53,6 +53,7 @@ import type {
 import type { GetConversationByIdType } from '../state/selectors/conversations.dom.ts';
 import type { GetSharedGroupNamesType } from '../util/sharedGroupNames.dom.ts';
 import type { LinkPreviewForUIType } from '../types/message/LinkPreviews.std.ts';
+import type { LinkPreviewEditType } from '../types/LinkPreview.std.ts';
 import { isSameLinkPreview } from '../types/message/LinkPreviews.std.ts';
 
 import { MandatoryProfileSharingActions } from './conversation/MandatoryProfileSharingActions.dom.tsx';
@@ -146,6 +147,10 @@ export type OwnProps = Readonly<{
   linkPreviewResult: LinkPreviewForUIType | null;
   onClearAttachments: (conversationId: string) => unknown;
   onCloseLinkPreview: (conversationId: string) => unknown;
+  onEditLinkPreview: (
+    conversationId: string,
+    edit: LinkPreviewEditType
+  ) => Promise<void>;
   platform: string;
   showToast: ShowToastAction;
   processAttachments: (options: {
@@ -290,6 +295,7 @@ export const CompositionArea = memo(function CompositionArea({
   linkPreviewLoading,
   linkPreviewResult,
   onCloseLinkPreview,
+  onEditLinkPreview,
   // Quote
   quotedMessageId,
   quotedMessageProps,
@@ -1290,6 +1296,7 @@ export const CompositionArea = memo(function CompositionArea({
             linkPreviewResult={linkPreviewResultForInput}
             quotedMessageId={quotedMessageIdForInput}
             onCloseLinkPreview={onCloseLinkPreview}
+            onEditLinkPreview={onEditLinkPreview}
             onDirtyChange={setDirty}
             onEditorStateChange={onEditorStateChange}
             onSelectEmoji={onSelectEmoji}

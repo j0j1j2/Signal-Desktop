@@ -3558,6 +3558,10 @@
     "messageformat": "Blocked",
     "description": "Preview shown for conversation that has been blocked"
   },
+  "icu:Message__blocked-label": {
+    "messageformat": "(blocked)",
+    "description": "Label shown next to the name of a blocked contact"
+  },
   "icu:ConversationListItem--draft-prefix": {
     "messageformat": "Draft:",
     "description": "Prefix shown in italic in conversation view when a draft is saved"
@@ -11096,5 +11100,61 @@
   "icu:WhatsNew__8.13--0": {
     "messageformat": "The new raised-hand indicators are now also displayed in the list of raised hands during group calls. It's a second-hand place to figure out who you should hand it over to when you're done speaking.",
     "description": "Release notes for 8.13"
+  },
+  "icu:LinkPreviewEditor__Edit": {
+    "messageformat": "Edit link preview",
+    "description": "Accessible label for the button that edits a staged link preview"
+  },
+  "icu:LinkPreviewEditor__Title": {
+    "messageformat": "Edit link preview",
+    "description": "Title of the link preview editor"
+  },
+  "icu:LinkPreviewEditor__Url": {
+    "messageformat": "Preview URL",
+    "description": "Label for the editable link preview URL"
+  },
+  "icu:LinkPreviewEditor__UrlPlaceholder": {
+    "messageformat": "https://example.com",
+    "description": "Placeholder for the editable link preview URL"
+  },
+  "icu:LinkPreviewEditor__UrlHint": {
+    "messageformat": "This changes only the preview URL, not the URL in your message.",
+    "description": "Explanation that editing a preview URL does not alter the message body"
+  },
+  "icu:LinkPreviewEditor__PreviewTitle": {
+    "messageformat": "Title",
+    "description": "Label for the editable link preview title"
+  },
+  "icu:LinkPreviewEditor__PreviewTitlePlaceholder": {
+    "messageformat": "Preview title",
+    "description": "Placeholder for the editable link preview title"
+  },
+  "icu:LinkPreviewEditor__Description": {
+    "messageformat": "Description",
+    "description": "Label for the editable link preview description"
+  },
+  "icu:LinkPreviewEditor__DescriptionPlaceholder": {
+    "messageformat": "Preview description",
+    "description": "Placeholder for the editable link preview description"
+  },
+  "icu:LinkPreviewEditor__Image": {
+    "messageformat": "Image",
+    "description": "Label for the editable link preview image"
+  },
+  "icu:LinkPreviewEditor__ChooseImage": {
+    "messageformat": "Choose image",
+    "description": "Button to choose a custom link preview image"
+  },
+  "icu:LinkPreviewEditor__RemoveImage": {
+    "messageformat": "Remove image",
+    "description": "Button to remove the link preview image"
+  },
+  "icu:LinkPreviewEditor__InvalidImage": {
+    "messageformat": "That image couldn't be used. Choose a supported image file.",
+    "description": "Error shown when a custom link preview image cannot be processed"
+  },
+  "icu:LinkPreviewEditor__InvalidUrl": {
+    "messageformat": "Enter a valid URL beginning with https://.",
+    "description": "Error shown when the custom link preview URL is invalid"
   }
 }

@@ -3,6 +3,7 @@
 
 import type { RefObject, JSX, ReactNode } from 'react';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import classNames from 'classnames';
 import type { ReadonlyDeep } from 'type-fest';
 import type { BadgeType } from '../../badges/types.std.ts';
 import {
@@ -69,6 +70,7 @@ function HeaderInfoTitle({
   i18n,
   isMe,
   isSignalConversation,
+  isBlocked,
   headerRef,
 }: {
   name: string | null;
@@ -77,6 +79,7 @@ function HeaderInfoTitle({
   i18n: LocalizerType;
   isMe: boolean;
   isSignalConversation: boolean;
+  isBlocked: boolean;
   headerRef: RefObject<HTMLDivElement | null>;
 }) {
   if (isSignalConversation) {
@@ -102,6 +105,11 @@ function HeaderInfoTitle({
   return (
     <div className="module-ConversationHeader__header__info__title">
       <UserText text={title} />
+      {isBlocked ? (
+        <span className="module-ConversationHeader__header__info__title__blocked-label">
+          {i18n('icu:Message__blocked-label')}
+        </span>
+      ) : null}
       {isInSystemContacts({ name: name ?? undefined, type }) ? (
         <InContactsIcon
           className="module-ConversationHeader__header__info__title__in-contacts-icon"
@@ -396,6 +404,8 @@ export const ConversationHeader = memo(function ConversationHeader({
               onViewUserStories={onViewUserStories}
               onViewConversationDetails={onViewConversationDetails}
               isSignalConversation={isSignalConversation ?? false}
+              onConversationAccept={onConversationAccept}
+              onConversationBlock={onConversationBlock}
             />
             <div className={tw(`flex flex-row gap-1 px-4 @min-[500px]:gap-3`)}>
               {!isSmsOnlyOrUnregistered &&
@@ -558,6 +568,8 @@ function HeaderContent({
   i18n,
   theme,
   isSignalConversation,
+  onConversationAccept,
+  onConversationBlock,
   onViewUserStories,
   onViewConversationDetails,
 }: {
@@ -568,6 +580,8 @@ function HeaderContent({
   i18n: LocalizerType;
   theme: ThemeType;
   isSignalConversation: boolean;
+  onConversationAccept: () => void;
+  onConversationBlock: () => void;
   onViewUserStories: () => void;
   onViewConversationDetails: () => void;
 }) {
@@ -587,7 +601,26 @@ function HeaderContent({
   }
 
   const avatar = (
-    <span className="module-ConversationHeader__header__avatar">
+    <span
+      className={classNames('module-ConversationHeader__header__avatar', {
+        'module-ConversationHeader__header__avatar--blocked':
+          type === 'direct' && conversation.isBlocked,
+      })}
+      onContextMenu={
+        type === 'direct' && !conversation.isMe && !isSignalConversation
+          ? event => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              if (conversation.isBlocked) {
+                onConversationAccept();
+              } else {
+                onConversationBlock();
+              }
+            }
+          : undefined
+      }
+    >
       <Avatar
         avatarPlaceholderGradient={
           conversation.gradientStart && conversation.gradientEnd
@@ -624,6 +657,11 @@ function HeaderContent({
         i18n={i18n}
         isMe={conversation.isMe}
         isSignalConversation={isSignalConversation}
+        isBlocked={
+          conversation.type === 'direct' &&
+          Boolean(conversation.isBlocked) &&
+          !conversation.isMe
+        }
         headerRef={headerRef}
       />
       {(isOfficialChat ||

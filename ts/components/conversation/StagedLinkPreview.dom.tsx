@@ -1,7 +1,7 @@
 // Copyright 2019 Signal Messenger, LLC
 // SPDX-License-Identifier: AGPL-3.0-only
 
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 
 import classNames from 'classnames';
 import lodash from 'lodash';
@@ -17,6 +17,8 @@ import { isCallLink } from '../../types/LinkPreview.std.ts';
 import { Avatar } from '../Avatar.dom.tsx';
 import { getColorForCallLink } from '../../util/getColorForCallLink.std.ts';
 import { getKeyFromCallLink } from '../../util/callLinks.std.ts';
+import type { LinkPreviewEditType } from '../../types/LinkPreview.std.ts';
+import { LinkPreviewEditorModal } from './LinkPreviewEditorModal.dom.tsx';
 
 const { unescape } = lodash;
 
@@ -25,11 +27,21 @@ export type Props = LinkPreviewForUIType & {
   imageSize?: number;
   moduleClassName?: string;
   onClose?: () => void;
+  onEdit?: (edit: LinkPreviewEditType) => Promise<void>;
 };
 
 export function StagedLinkPreview(props: Props): JSX.Element {
-  const { date, description, domain, i18n, moduleClassName, onClose, title } =
-    props;
+  const {
+    date,
+    description,
+    domain,
+    i18n,
+    moduleClassName,
+    onClose,
+    onEdit,
+    title,
+  } = props;
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const isLoaded = Boolean(domain);
 
   const getClassName = getClassNamesFor(
@@ -85,6 +97,22 @@ export function StagedLinkPreview(props: Props): JSX.Element {
           className={getClassName('__close-button')}
           onClick={onClose}
           type="button"
+        />
+      )}
+      {onEdit && isLoaded && (
+        <button
+          aria-label={i18n('icu:LinkPreviewEditor__Edit')}
+          className={getClassName('__edit-button')}
+          onClick={() => setIsEditorOpen(true)}
+          type="button"
+        />
+      )}
+      {onEdit && isEditorOpen && (
+        <LinkPreviewEditorModal
+          i18n={i18n}
+          preview={props}
+          onClose={() => setIsEditorOpen(false)}
+          onSave={onEdit}
         />
       )}
     </div>
