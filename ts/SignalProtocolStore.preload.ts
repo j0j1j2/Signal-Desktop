@@ -2380,7 +2380,10 @@ export class SignalProtocolStore extends EventEmitter {
     serviceId: ServiceIdString,
     verifiedStatus: number,
     publicKey: Uint8Array<ArrayBuffer>
-  ): Promise<{ shouldAddVerifiedChangedMessage: boolean }> {
+  ): Promise<{
+    shouldAddVerifiedChangedMessage: boolean;
+    didApplyIdentity: boolean;
+  }> {
     strictAssert(
       validateVerifiedStatus(verifiedStatus),
       `Invalid verified status: ${verifiedStatus}`
@@ -2400,6 +2403,22 @@ export class SignalProtocolStore extends EventEmitter {
         const statusMatches =
           keyMatches && verifiedStatus === identityRecord?.verified;
 
+        // Storage Service records can lag behind the identity key learned from
+        // live protocol traffic. Applying a mismatched stored key here causes a
+        // stale key and the live key to repeatedly replace each other, producing
+        // false safety-number-change advisories. Keep the locally known key; a
+        // real identity change will still be applied by saveIdentity when it is
+        // observed in protocol traffic.
+        if (hadEntry && !keyMatches) {
+          log.warn(
+            'updateIdentityAfterSync: ignoring mismatched identity key from storage service'
+          );
+          return {
+            shouldAddVerifiedChangedMessage: false,
+            didApplyIdentity: false,
+          };
+        }
+
         if (!keyMatches || !statusMatches) {
           await this.#saveIdentityWithAttributesOnQueue(serviceId, {
             publicKey,
@@ -2415,24 +2434,6 @@ export class SignalProtocolStore extends EventEmitter {
             publicKey,
             'updateIdentityAfterSync'
           );
-        } else if (hadEntry && !keyMatches) {
-          try {
-            this.emit(
-              'keychange',
-              serviceId,
-              'updateIdentityAfterSync - change'
-            );
-          } catch (error) {
-            log.error(
-              'updateIdentityAfterSync: error triggering keychange:',
-              Errors.toLogFormat(error)
-            );
-          }
-        }
-
-        // We only want to show a notification if the key is the same as before
-        if (hadEntry && !keyMatches) {
-          return { shouldAddVerifiedChangedMessage: false };
         }
 
         // See: https://github.com/signalapp/Signal-Android/blob/fc3db538bcaa38dc149712a483d3032c9c1f3998/app/src/main/java/org/thoughtcrime/securesms/database/RecipientDatabase.kt#L921-L936
@@ -2440,17 +2441,26 @@ export class SignalProtocolStore extends EventEmitter {
           verifiedStatus === VerifiedStatus.VERIFIED &&
           (!hadEntry || identityRecord?.verified !== VerifiedStatus.VERIFIED)
         ) {
-          return { shouldAddVerifiedChangedMessage: true };
+          return {
+            shouldAddVerifiedChangedMessage: true,
+            didApplyIdentity: true,
+          };
         }
         if (
           verifiedStatus !== VerifiedStatus.VERIFIED &&
           hadEntry &&
           identityRecord?.verified === VerifiedStatus.VERIFIED
         ) {
-          return { shouldAddVerifiedChangedMessage: true };
+          return {
+            shouldAddVerifiedChangedMessage: true,
+            didApplyIdentity: true,
+          };
         }
 
-        return { shouldAddVerifiedChangedMessage: false };
+        return {
+          shouldAddVerifiedChangedMessage: false,
+          didApplyIdentity: true,
+        };
       }
     );
   }

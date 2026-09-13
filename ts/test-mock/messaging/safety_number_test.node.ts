@@ -99,7 +99,7 @@ describe('safety number', function (this: Mocha.Suite) {
     await app.waitForStorageService();
   }
 
-  it('show safety number change UI on regular send', async () => {
+  it('ignores a storage-only identity mismatch on regular send', async () => {
     const { contacts } = bootstrap;
     const [alice] = contacts as [PrimaryDevice];
 
@@ -112,33 +112,17 @@ describe('safety number', function (this: Mocha.Suite) {
 
     await changeIdentityKey();
 
-    await expectSystemMessages(window, [
-      /Safety Number has changed/, // Bob's key from storage service
-    ]);
+    await expectSystemMessages(window, []);
 
     debug('Sending message');
     await input.press('Enter');
-
-    debug('Waiting for safety number dialog');
-    const dialog = window.getByRole('alertdialog', {
-      name: 'Safety Number Changes',
-    });
-    await dialog.locator(`"${alice.profileName}"`).waitFor();
-
-    await expectSystemMessages(window, [
-      /Safety Number has changed/, // Bob's key from storage service
-      /Safety Number has changed/, // Fixed Alice's key from backend
-    ]);
-
-    debug('Confirming send');
-    await dialog.getByRole('button', { name: 'Send anyway' }).click();
 
     debug('Getting a message');
     const { body } = await alice.waitForMessage();
     assert.strictEqual(body, 'Hello Alice!');
   });
 
-  it('show safety number change UI on story send', async () => {
+  it('ignores a storage-only identity mismatch on story send', async () => {
     const { contacts } = bootstrap;
     const [alice] = contacts as [PrimaryDevice];
     const window = await app.getWindow();
@@ -179,15 +163,6 @@ describe('safety number', function (this: Mocha.Suite) {
 
     debug('Hitting Send');
     await window.locator('button.SendStoryModal__send').click();
-
-    debug('Waiting for safety number dialog');
-    const dialog = window.getByRole('alertdialog', {
-      name: 'Safety Number Changes',
-    });
-    await dialog.locator(`"${alice.profileName}"`).waitFor();
-
-    debug('Confirming send');
-    await dialog.getByRole('button', { name: 'Send anyway' }).click();
 
     debug('Getting a story');
     const { storyMessage } = await alice.waitForStory();

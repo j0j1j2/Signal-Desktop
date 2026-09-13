@@ -1456,6 +1456,7 @@ export async function mergeContactRecord(
   });
 
   // https://github.com/signalapp/Signal-Android/blob/fc3db538bcaa38dc149712a483d3032c9c1f3998/app/src/main/java/org/thoughtcrime/securesms/database/RecipientDatabase.kt#L921-L936
+  let ignoredMismatchedIdentityKey = false;
   if (contactRecord.identityKey.length) {
     const verified = await conversation.safeGetVerified();
     let { identityState } = contactRecord;
@@ -1464,14 +1465,17 @@ export async function mergeContactRecord(
     }
     const newVerified = fromRecordVerified(identityState);
 
-    const { shouldAddVerifiedChangedMessage } =
+    const { shouldAddVerifiedChangedMessage, didApplyIdentity } =
       await signalProtocolStore.updateIdentityAfterSync(
         serviceId,
         newVerified,
         contactRecord.identityKey
       );
 
-    if (verified !== newVerified) {
+    if (!didApplyIdentity) {
+      ignoredMismatchedIdentityKey = true;
+      details.push('ignored mismatched identity key from storage service');
+    } else if (verified !== newVerified) {
       details.push(
         `updating verified state from=${verified} ` +
           `is_null=${identityState == null} to=${newVerified}`
@@ -1504,7 +1508,8 @@ export async function mergeContactRecord(
     markedUnread: contactRecord.markedUnread,
     storageID,
     storageVersion,
-    needsStorageServiceSync: false,
+    // Replace a stale remote identity record with the locally confirmed key.
+    needsStorageServiceSync: ignoredMismatchedIdentityKey,
   });
 
   if (contactRecord.hidden) {

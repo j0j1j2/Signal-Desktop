@@ -754,22 +754,25 @@ describe('SignalProtocolStore', () => {
       assert.isTrue(constantTimeEqual(identity.publicKey, newIdentity));
     });
 
-    it('should update public key without verified change', async () => {
-      const { shouldAddVerifiedChangedMessage } =
+    it('should ignore a mismatched identity key from storage sync', async () => {
+      const { shouldAddVerifiedChangedMessage, didApplyIdentity } =
         await store.updateIdentityAfterSync(
           theirAci,
           store.VerifiedStatus.DEFAULT,
           newIdentity
         );
       assert.isFalse(shouldAddVerifiedChangedMessage);
-      assert.strictEqual(keychangeTriggered, 1);
+      assert.isFalse(didApplyIdentity);
+      assert.strictEqual(keychangeTriggered, 0);
 
       const identity = await DataReader.getIdentityKeyById(theirAci);
       if (!identity) {
         throw new Error('Missing identity!');
       }
       assert.strictEqual(identity.verified, store.VerifiedStatus.DEFAULT);
-      assert.isTrue(constantTimeEqual(identity.publicKey, newIdentity));
+      assert.isTrue(
+        constantTimeEqual(identity.publicKey, testKey.publicKey.serialize())
+      );
     });
 
     it('should update verified without public key change', async () => {
