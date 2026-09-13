@@ -30,7 +30,6 @@ import * as universalExpireTimer from '../../util/universalExpireTimer.preload.t
 import * as Attachment from '../../util/Attachment.std.ts';
 import type { LocalizerType } from '../../types/I18N.std.ts';
 import { AttachmentDownloadUrgency } from '../../types/AttachmentDownload.std.ts';
-import { isFileDangerous } from '../../util/isFileDangerous.std.ts';
 import { getLocalAttachmentUrl } from '../../util/getLocalAttachmentUrl.std.ts';
 import { instance as libphonenumberInstance } from '../../util/libphonenumberInstance.std.ts';
 import {
@@ -4396,26 +4395,6 @@ function saveAttachment(
   index = 0
 ): ThunkAction<void, RootStateType, unknown, ShowToastActionType> {
   return async dispatch => {
-    const { fileName = '' } = attachment;
-
-    const isDangerous = isFileDangerous(
-      fileName ||
-        Attachment.getSuggestedFilename({
-          attachment,
-          scenario: 'saving-locally',
-        })
-    );
-
-    if (isDangerous) {
-      dispatch({
-        type: SHOW_TOAST,
-        payload: {
-          toastType: ToastType.DangerousFileType,
-        },
-      });
-      return;
-    }
-
     const fullPath = await Attachment.save({
       attachment,
       index: index + 1,
@@ -4465,28 +4444,6 @@ function saveAttachments(
   timestamp = Date.now()
 ): ThunkAction<void, RootStateType, unknown, ShowToastActionType> {
   return async (dispatch, getState) => {
-    // check if any of the attachments could be dangerous
-    for (const attachment of attachments) {
-      const { fileName = '' } = attachment;
-
-      const isDangerous = isFileDangerous(
-        fileName ||
-          Attachment.getSuggestedFilename({
-            attachment,
-            scenario: 'saving-locally',
-          })
-      );
-      if (isDangerous) {
-        dispatch({
-          type: SHOW_TOAST,
-          payload: {
-            toastType: ToastType.DangerousFileType,
-          },
-        });
-        return;
-      }
-    }
-
     const { canceled, dirPath } = await showSaveMultiDialog(
       getIntl(getState())
     );
